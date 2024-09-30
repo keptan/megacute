@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 #include <stdlib.h>
+#include <print>
 
 int main (int argc, char** argv)
 {
@@ -16,9 +17,10 @@ int main (int argc, char** argv)
 		cpr::Parameters{{"Hydrus-Client-API-Access-Key", key}
 		});
 
-	std::cout << r.text << std::endl;
+	std::print("{0}\n", r.text);
 
 	Json::Value event;
 
 	return 0;
 }
+
