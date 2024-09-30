@@ -7,4 +7,5 @@ include_directories(${JSON_INC_PATH})
 
 
 add_executable(cprTest cpr.cpp)
+set_property(TARGET cprTest PROPERTY CXX_STANDARD 23)
 target_link_libraries(cprTest PUBLIC cpr::cpr jsoncpp)
