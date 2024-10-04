@@ -48,6 +48,10 @@ class Window : public Gtk::Window
 		//member widget
 };
 
+void activated ()
+{
+}
+
 int main (int argc, char** argv)
 {
 
@@ -68,14 +72,19 @@ int main (int argc, char** argv)
 	loader->write(reinterpret_cast<const guint8*>(r.text.data()), r.text.size());
 	loader->close();
 
+	auto builder = Gtk::Builder::create_from_file("../megacute.xml.ui");
+	auto imageWidget = builder->get_widget<Gtk::Image>("image");
+	auto window 	 = builder->get_widget<Gtk::Window>("window");
+
+	const auto activate = [&](void)
+	{
+		app->add_window(*window);
+		window->set_visible(true);
+		imageWidget->set( loader->get_pixbuf());
+	};
+
+	app->signal_activate().connect(activate);
+	app->run(argc, argv);
 	
-
-
-	std::print("{}", r.header["Content-Type"]);
-	//std::print("{}", json::parse(raw).dump());
-
-
-	return app->make_window_and_run<Window>(argc, argv, loader->get_pixbuf());
-
 }
 
