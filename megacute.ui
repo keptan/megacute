@@ -1,0 +1,75 @@
+using Gtk 4.0;
+using Adw 1;
+
+Adw.Window 
+{
+  width-request: 360;
+  height-request: 200;
+  default-width: 640;
+  default-height: 480;
+
+  content: Adw.NavigationSplitView split_view 
+  {
+    sidebar: Adw.NavigationPage 
+    {
+      valign: fill;
+      Box
+      {
+        margin-top: 10;
+        margin-bottom: 10;
+        orientation: vertical;
+        spacing: 10;
+        valign: fill;
+        vexpand: true;
+        
+        Entry 
+        {
+          valign: start;
+          name: "searchbox";
+        }
+            
+        ScrolledWindow 
+        {
+          vexpand: true;
+          hscrollbar-policy: never;
+          propagate-natural-height: true;
+          has-frame: true;
+          valign: start;
+
+          GridView grid_view 
+          {
+            name: "icons";
+            orientation: vertical;
+            max-columns: 2;
+            min-columns: 2;
+            hexpand: true;
+          }
+        }
+        Entry
+        {
+          valign: end;
+        }
+      }
+    };
+
+    content: Adw.NavigationPage 
+    {
+      title: _("Content");
+      tag: "content";
+
+      child: Adw.ToolbarView {
+        [top]
+        Adw.HeaderBar {
+          show-title: false;
+        }
+
+        content: Image
+        {
+          name:"image";
+        };
+      };
+    };
+    
+    
+  };
+}
