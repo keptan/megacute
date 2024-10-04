@@ -1,26 +1,81 @@
 #include <cpr/cpr.h>
-#include <json/json.h>
 #include <iostream>
 #include <string>
 #include <stdlib.h>
 #include <print>
 
+#include <gtkmm.h>
+#include <gdkmm/pixbuf.h>
+#include <nlohmann/json.hpp>
+
+using json = nlohmann::json;
+
+class Area : public Gtk::DrawingArea
+{
+	public:
+		Area(Glib::RefPtr<Gdk::Pixbuf> i)
+		{
+		
+			image = i;
+			set_draw_func( sigc::mem_fun(*this, &Area::on_draw));
+		}
+		virtual ~Area() = default;
+
+	protected:
+		void on_draw (const Cairo::RefPtr< Cairo::Context>& cr, int w, int h)
+		{
+			if (!image) return;
+			Gdk::Cairo::set_source_pixbuf(cr, image, 100, 100);
+			
+			cr->paint();
+		}
+		Glib::RefPtr<Gdk::Pixbuf> image;
+};
+
+class Window : public Gtk::Window
+{
+	public:
+		Window (Glib::RefPtr<Gdk::Pixbuf> i)
+			: area(i)
+		{
+			set_title("megacute");
+			set_default_size(400, 400);
+			set_child(area);
+		}
+
+	protected:
+		Area area;
+		//member widget
+};
+
 int main (int argc, char** argv)
 {
 
-	const std::string str = argc > 1 ? argv[1] : "verify_access_key";
+	auto app = Gtk::Application::create("org.gtkmm.examples.base");
+
+	const std::string str = argc > 1 ? argv[1] : "get_files/thumbnail";
 	const std::string key = getenv("HYDRUS_KEY");
 
-	if(key.size() == 0) std::cout << "set the HYDRUS_KEY enviroment variable to your hydrus API access key";
-
 	cpr::Response r = cpr::Get( cpr::Url{"http://localhost:45869/" + str},
-		cpr::Parameters{{"Hydrus-Client-API-Access-Key", key}
-		});
+		cpr::Parameters{{"Hydrus-Client-API-Access-Key", key}, 
+				{"file_id", "114169906"}
+		},
+		cpr::Header{{"Content-Type", "application/json"}});
 
-	std::print("{0}\n", r.text);
+	std::string raw = r.text;
 
-	Json::Value event;
+	auto loader = Gdk::PixbufLoader::create();
+	loader->write(reinterpret_cast<const guint8*>(r.text.data()), r.text.size());
+	loader->close();
 
-	return 0;
+	
+
+
+	std::print("{}", r.header["Content-Type"]);
+	//std::print("{}", json::parse(raw).dump());
+
+
+	return app->make_window_and_run<Window>(argc, argv, loader->get_pixbuf());
+
 }
 

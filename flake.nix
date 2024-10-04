@@ -21,8 +21,9 @@
             packages = with pkgs; [
 	    	cmake
 		gtkmm4
-		jsoncpp
 		libcpr
+		cambalache
+		pkg-config
             ];
 
 	    shellHook = '' echo Welcome back commander :3 '';
