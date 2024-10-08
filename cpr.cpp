@@ -30,14 +30,6 @@ class SearchIcon : public Glib::Object
 	};
 };
 
-class SearchModel : public Gtk::GridView
-{
-	public:
-	SearchModel ()
-	{
-	}
-};
-
 auto getThumbnail (const std::string& fid)
 {
 	std::cout << "getting thumbnail" << std::endl;
