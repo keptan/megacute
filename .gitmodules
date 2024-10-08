@@ -1,0 +1,3 @@
+[submodule "cureMaid"]
+	path = cureMaid
+	url = https://github.com/keptan/cureMaid

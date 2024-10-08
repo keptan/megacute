@@ -24,6 +24,7 @@
 		libcpr
 		cambalache
 		pkg-config
+		sqlite
             ];
 
 	    shellHook = '' echo Welcome back commander :3 '';

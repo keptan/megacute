@@ -8,6 +8,8 @@
 #include <gdkmm/pixbuf.h>
 #include <nlohmann/json.hpp>
 
+#include "transactional.h"
+
 using json = nlohmann::json;
 
 class SearchIcon : public Glib::Object
@@ -91,6 +93,7 @@ int main (int argc, char** argv)
 		[&](auto l){ 
 			std::cout << "setup called" << std::endl;
 			auto picture = Gtk::make_managed<Gtk::Picture>();
+			picture->set_size_request(50,150);
 			l->set_child(*picture);
 		});
 
@@ -109,6 +112,7 @@ int main (int argc, char** argv)
 	grid->set_model( select);
 	grid->set_factory( factory);
 
+	for(int i = 0; i < 100; i ++)
 	model->append( Glib::make_refptr_for_instance<SearchIcon>(
 			new SearchIcon("114169906")));
 
@@ -122,6 +126,7 @@ int main (int argc, char** argv)
 	};
 
 	
+	Database db ("test");
 
 	app->signal_activate().connect(activate);
 	return app->run(argc, argv);
