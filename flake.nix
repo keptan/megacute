@@ -25,6 +25,7 @@
 		cambalache
 		pkg-config
 		sqlite
+		gdb
             ];
 
 	    shellHook = '' echo Welcome back commander :3 '';
