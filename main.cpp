@@ -10,7 +10,7 @@ auto main (int argc, char** argv) -> int
 
 	for(const auto i : ids) window.addFile(i);
 
-	api.setTagService("local tags");
+	api.setTagService("all known tags");
 
 
 	return window.app->run(argc, argv);
