@@ -98,10 +98,7 @@ struct SearchWindow
 
 	void printData (const FileId id)
 	{
-		auto result = api.retrieveMetadata(id);
-		auto tags = result.get().value<std::vector<std::string>>("metadata.tags." + api.tag_service + ".display_tags.0", {});
-		for(const auto t : tags) std::print("{}, ", t);
-		std::print("\n");
+		api.retrieveTags(id);	
 	}
 };
 
