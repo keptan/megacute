@@ -19,7 +19,7 @@ struct Hydrus
 	const std::string res;
 	const std::string key;
 
- 	std::string tag_service;
+ 	std::string tagService;
 
 	//lru cache here for the thumbnails I suppose
 	//and images? we can prefetch the images maybe based on expected ELO's of winners
@@ -74,14 +74,28 @@ struct Hydrus
 		return std::async(std::launch::async, &Hydrus::doRequest, this, std::move(fr));
 	}
 
+	void retrieveTags (const FileId id)
+	{
+		auto result = retrieveMetadata(id);
+		auto json = result.get();
+		print("{}\n", tagService);
+		auto tags   = json.at("metadata").at(0).at("tags").at(tagService).at("display_tags").at("0").get<std::vector<std::string>>();
+		for(auto& t : tags) std::print("{}, ", t);
+		std::print("\n");
+		//return tags;
+
+	}
+
 	void setTagService (const std::string str)
 	{
-		json formatted = "local tags";
+		json formatted = str;
 		auto services = cpr::Get( cpr::Url{res + "get_service"},
 			cpr::Parameters{{"Hydrus-Client-API-Access-Key", key}, {"service_name", str}});
 
 		json response = json::parse(services.text);
-		tag_service = response.value("service.service_key", "");
+		std::print("{}", response.dump());
+		std::print("\n");
+		tagService = response.at("service").at("service_key");
 	}
 };
 
