@@ -10,6 +10,9 @@
       <object class="GtkPaned">
         <property name="start-child">
           <object class="GtkFrame">
+            <property name="width-request">100</property>
+            <property name="hexpand">false</property>
+            <property name="vexpand">false</property>
             <child>
               <object class="GtkBox">
                 <property name="margin-top">10</property>
@@ -19,7 +22,7 @@
                 <property name="valign">0</property>
                 <property name="vexpand">true</property>
                 <child>
-                  <object class="GtkEntry">
+                  <object class="GtkEntry" id="search">
                     <property name="valign">1</property>
                     <property name="name">searchbox</property>
                   </object>
@@ -36,7 +39,6 @@
                         <property name="orientation">1</property>
                         <property name="max-columns">2</property>
                         <property name="min-columns">2</property>
-                        <property name="hexpand">true</property>
                       </object>
                     </child>
                   </object>
@@ -53,7 +55,17 @@
         <property name="end-child">
           <object class="GtkFrame">
             <child>
-              <object class="GtkImage" id="image"></object>
+              <object class="GtkListView" id="list">
+                <property name="height-request">25</property>
+                <property name="vexpand">false</property>
+                <property name="hexpand">true</property>
+                <property name="valign">2</property>
+              </object>
+            </child>
+            <property name="hexpand">true</property>
+            <property name="width-request">400</property>
+            <child>
+              <object class="GtkPicture" id="picture"></object>
             </child>
           </object>
         </property>
