@@ -6,15 +6,20 @@
 #include <string_view>
 #include <future>
 #include <print>
+#include "utility.h"
 
 
 using namespace nlohmann;
 using FileId = unsigned int;
 
+
+
 struct Hydrus
 {
 	const std::string res;
 	const std::string key;
+
+ 	std::string tag_service;
 
 	//lru cache here for the thumbnails I suppose
 	//and images? we can prefetch the images maybe based on expected ELO's of winners
@@ -44,12 +49,39 @@ struct Hydrus
 		return std::async(std::launch::async, &Hydrus::doRequest, this, std::move(fr));
 	}
 
+	std::future<json> search (const std::string_view str)
+	{
+		json formatted = splitStringView(str, ','); 
+		cpr::AsyncResponse fr = cpr::GetAsync( cpr::Url{res + "get_files/search_files"},
+			cpr::Parameters{{"Hydrus-Client-API-Access-Key", key}, {"tags", formatted.dump()}});
+
+		return std::async(std::launch::async, &Hydrus::doRequest, this, std::move(fr));
+	}
+
 	std::future<std::string> retrieveThumbnail (const FileId id)
 	{
 		json formatted = id;
 		cpr::AsyncResponse fr = cpr::GetAsync( cpr::Url{res + "get_files/thumbnail"},
 			cpr::Parameters{{"Hydrus-Client-API-Access-Key", key}, {"file_id", formatted.dump()}});
 		return std::async(std::launch::async, &Hydrus::fileRequest, this, std::move(fr));
+	}
+
+	std::future<json> retrieveMetadata (const FileId id)
+	{
+		json formatted = id;
+		cpr::AsyncResponse fr = cpr::GetAsync( cpr::Url{res + "get_files/file_metadata"},
+			cpr::Parameters{{"Hydrus-Client-API-Access-Key", key}, {"file_id", formatted.dump()}});
+		return std::async(std::launch::async, &Hydrus::doRequest, this, std::move(fr));
+	}
+
+	void setTagService (const std::string str)
+	{
+		json formatted = "local tags";
+		auto services = cpr::Get( cpr::Url{res + "get_service"},
+			cpr::Parameters{{"Hydrus-Client-API-Access-Key", key}, {"service_name", str}});
+
+		json response = json::parse(services.text);
+		tag_service = response.value("service.service_key", "");
 	}
 };
 
