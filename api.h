@@ -6,20 +6,24 @@
 #include <string_view>
 #include <future>
 #include <print>
-#include "utility.h"
+#include "tags.h"
 
 
 using namespace nlohmann;
 using FileId = unsigned int;
 
-
-
-struct Hydrus
+class Hydrus
 {
 	const std::string res;
 	const std::string key;
 
  	std::string tagService;
+
+	struct File
+	{
+		const FileId id;
+		std::vector< std::string> tags;
+	};
 
 	//lru cache here for the thumbnails I suppose
 	//and images? we can prefetch the images maybe based on expected ELO's of winners
@@ -40,22 +44,12 @@ struct Hydrus
 		return result.text;
 	}
 
-	std::future<json> search (const std::vector<std::string> tags)
+	public:
+
+	Hydrus (const std::string_view res, const std::string_view k)
+		: res(res), key(k)
 	{
-		json formatted = tags;
-		cpr::AsyncResponse fr = cpr::GetAsync( cpr::Url{res + "get_files/search_files"},
-			cpr::Parameters{{"Hydrus-Client-API-Access-Key", key}, {"tags", formatted.dump()}});
 
-		return std::async(std::launch::async, &Hydrus::doRequest, this, std::move(fr));
-	}
-
-	std::future<json> search (const std::string_view str)
-	{
-		json formatted = splitStringView(str, ','); 
-		cpr::AsyncResponse fr = cpr::GetAsync( cpr::Url{res + "get_files/search_files"},
-			cpr::Parameters{{"Hydrus-Client-API-Access-Key", key}, {"tags", formatted.dump()}});
-
-		return std::async(std::launch::async, &Hydrus::doRequest, this, std::move(fr));
 	}
 
 	std::future<std::string> retrieveThumbnail (const FileId id)
@@ -74,28 +68,41 @@ struct Hydrus
 		return std::async(std::launch::async, &Hydrus::doRequest, this, std::move(fr));
 	}
 
-	void retrieveTags (const FileId id)
+	std::future< std::vector<std::string>> retrieveTags (const FileId id)
 	{
-		auto result = retrieveMetadata(id);
-		auto json = result.get();
-		print("{}\n", tagService);
-		auto tags   = json.at("metadata").at(0).at("tags").at(tagService).at("display_tags").at("0").get<std::vector<std::string>>();
-		for(auto& t : tags) std::print("{}, ", t);
-		std::print("\n");
-		//return tags;
-
+		return std::async( std::launch::async, [&, id=id]()
+				{
+					auto json = retrieveMetadata(id).get();
+					auto tags = json.at("metadata").at(0).at("tags").at(tagService).at("display_tags").at("0").get<std::vector<std::string>>();
+					return tags;
+				});
 	}
 
-	void setTagService (const std::string str)
+	std::future<void> setTagService (const std::string str)
 	{
-		json formatted = str;
-		auto services = cpr::Get( cpr::Url{res + "get_service"},
-			cpr::Parameters{{"Hydrus-Client-API-Access-Key", key}, {"service_name", str}});
+		return std::async( std::launch::async, [&, str=str]()
+				{
+					json formatted = str;
+					auto services = cpr::GetAsync( cpr::Url{res + "get_service"},
+						cpr::Parameters{{"Hydrus-Client-API-Access-Key", key}, {"service_name", str}});
 
-		json response = json::parse(services.text);
-		std::print("{}", response.dump());
-		std::print("\n");
-		tagService = response.at("service").at("service_key");
+					json response = json::parse(services.get().text);
+					tagService = response.at("service").at("service_key");
+					});
+	}
+
+	std::future< std::vector<FileId>> search (const std::vector<std::string> tags)
+	{
+		return std::async(std::launch::async, [&, tags=tags]()
+				{
+					json formatted = tags;
+					cpr::AsyncResponse fr = cpr::GetAsync( cpr::Url{res + "get_files/search_files"},
+					cpr::Parameters{{"Hydrus-Client-API-Access-Key", key}, {"tags", formatted.dump()}});
+
+					auto req = std::async(std::launch::async, &Hydrus::doRequest, this, std::move(fr));
+					auto ids = req.get()["file_ids"].get<std::vector<FileId>>();
+					return ids;
+				});
 	}
 };
 
