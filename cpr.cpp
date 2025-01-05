@@ -9,6 +9,7 @@
 #include <nlohmann/json.hpp>
 
 #include "transactional.h"
+#include "api.h"
 
 using json = nlohmann::json;
 
@@ -16,8 +17,8 @@ class SearchIcon : public Glib::Object
 {
 	public:
 
-	const std::string fileId;
-	SearchIcon (const std::string& id) 
+	const FileId fileId;
+	SearchIcon (const FileId& id) 
 		: fileId(id)
 	{
 		/*
@@ -30,22 +31,14 @@ class SearchIcon : public Glib::Object
 	};
 };
 
-auto getThumbnail (const std::string& fid)
+auto getThumbnail (Hydrus& api, FileId id)
 {
 	std::cout << "getting thumbnail" << std::endl;
-	const std::string str =  "get_files/thumbnail";
-	const std::string key = getenv("HYDRUS_KEY");
 
-	cpr::Response r = cpr::Get( cpr::Url{"http://localhost:45869/" + str},
-		cpr::Parameters{{"Hydrus-Client-API-Access-Key", key}, 
-				{"file_id", "114169906"}
-		},
-		cpr::Header{{"Content-Type", "application/json"}});
-
-	std::string raw = r.text;
+	std::string raw = api.retrieveThumbnail(id).get();
 
 	auto loader = Gdk::PixbufLoader::create();
-	loader->write(reinterpret_cast<const guint8*>(r.text.data()), r.text.size());
+	loader->write(reinterpret_cast<const guint8*>(raw.data()), raw.size());
 	loader->close();
 
 	return loader->get_pixbuf();
@@ -55,22 +48,7 @@ auto getThumbnail (const std::string& fid)
 int main (int argc, char** argv)
 {
 
-	auto app = Gtk::Application::create("org.gtkmm.examples.base");
-
-	const std::string str = argc > 1 ? argv[1] : "get_files/file";
-	const std::string key = getenv("HYDRUS_KEY");
-
-	cpr::Response r = cpr::Get( cpr::Url{"http://localhost:45869/" + str},
-		cpr::Parameters{{"Hydrus-Client-API-Access-Key", key}, 
-				{"file_id", "114169906"}
-		},
-		cpr::Header{{"Content-Type", "application/json"}});
-
-	std::string raw = r.text;
-
-	auto loader = Gdk::PixbufLoader::create();
-	loader->write(reinterpret_cast<const guint8*>(r.text.data()), r.text.size());
-	loader->close();
+	auto app = Gtk::Application::create("megacute...");
 
 	auto builder = Gtk::Builder::create_from_file("../megacute.xml.ui");
 	auto imageWidget = builder->get_widget<Gtk::Image>("image");
@@ -80,6 +58,8 @@ int main (int argc, char** argv)
 	auto model   = Gio::ListStore<SearchIcon>::create();
 	auto select  = Gtk::SingleSelection::create(model);
 	auto factory = Gtk::SignalListItemFactory::create();
+
+	Hydrus api("http://localhost:45869/", getenv("HYDRUS_KEY"));
 	
 	factory->signal_setup().connect(
 		[&](auto l){ 
@@ -98,15 +78,15 @@ int main (int argc, char** argv)
 			auto picture = dynamic_cast<Gtk::Picture*>(l->get_child());
 			if (!picture) return;
 
-			picture->set_pixbuf( getThumbnail(col->fileId));
+			picture->set_pixbuf( getThumbnail(api, col->fileId));
 		});
 
 	grid->set_model( select);
 	grid->set_factory( factory);
 
-	for(int i = 0; i < 100; i ++)
+	for(int i = 0; i < 1; i ++)
 	model->append( Glib::make_refptr_for_instance<SearchIcon>(
-			new SearchIcon("114169906")));
+			new SearchIcon("ac4293228e6b64b92b2f31d32084597e9b1414f5594069fa1bf0a9fd811dd927")));
 
 		
 	
@@ -114,11 +94,10 @@ int main (int argc, char** argv)
 	{
 		app->add_window(*window);
 		window->set_visible(true);
-		imageWidget->set( loader->get_pixbuf());
+		//imageWidget->set( loader->get_pixbuf());
 	};
 
 	
-	Database db ("test");
 
 	app->signal_activate().connect(activate);
 	return app->run(argc, argv);
