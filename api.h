@@ -10,7 +10,7 @@
 
 
 using namespace nlohmann;
-using FileId = unsigned int;
+using FileId = std::string;
 
 class Hydrus
 {
@@ -18,12 +18,6 @@ class Hydrus
 	const std::string key;
 
  	std::string tagService;
-
-	struct File
-	{
-		const FileId id;
-		std::vector< std::string> tags;
-	};
 
 	//lru cache here for the thumbnails I suppose
 	//and images? we can prefetch the images maybe based on expected ELO's of winners
@@ -54,9 +48,8 @@ class Hydrus
 
 	std::future<std::string> retrieveThumbnail (const FileId id)
 	{
-		json formatted = id;
 		cpr::AsyncResponse fr = cpr::GetAsync( cpr::Url{res + "get_files/thumbnail"},
-			cpr::Parameters{{"Hydrus-Client-API-Access-Key", key}, {"file_id", formatted.dump()}});
+		cpr::Parameters{{"Hydrus-Client-API-Access-Key", key}, {"hash", id}});
 		return std::async(std::launch::async, &Hydrus::fileRequest, this, std::move(fr));
 	}
 
@@ -64,7 +57,7 @@ class Hydrus
 	{
 		json formatted = id;
 		cpr::AsyncResponse fr = cpr::GetAsync( cpr::Url{res + "get_files/file_metadata"},
-			cpr::Parameters{{"Hydrus-Client-API-Access-Key", key}, {"file_id", formatted.dump()}});
+			cpr::Parameters{{"Hydrus-Client-API-Access-Key", key}, {"hash", formatted.dump()}});
 		return std::async(std::launch::async, &Hydrus::doRequest, this, std::move(fr));
 	}
 
@@ -97,10 +90,10 @@ class Hydrus
 				{
 					json formatted = tags;
 					cpr::AsyncResponse fr = cpr::GetAsync( cpr::Url{res + "get_files/search_files"},
-					cpr::Parameters{{"Hydrus-Client-API-Access-Key", key}, {"tags", formatted.dump()}});
+					cpr::Parameters{{"Hydrus-Client-API-Access-Key", key}, {"return_hashes", "true"}, {"tags", formatted.dump()}});
 
 					auto req = std::async(std::launch::async, &Hydrus::doRequest, this, std::move(fr));
-					auto ids = req.get()["file_ids"].get<std::vector<FileId>>();
+					auto ids = req.get()["hashes"].get<std::vector<FileId>>();
 					return ids;
 				});
 	}
