@@ -65,7 +65,7 @@
             <property name="hexpand">true</property>
             <property name="width-request">400</property>
             <child>
-              <object class="GtkPicture" id="picture"></object>
+              <object class="GtkImage" id="picture"></object>
             </child>
           </object>
         </property>
