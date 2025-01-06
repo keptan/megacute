@@ -53,6 +53,13 @@ class Hydrus
 		return std::async(std::launch::async, &Hydrus::fileRequest, this, std::move(fr));
 	}
 
+	std::future<std::string> retrieveFile (const FileId id)
+	{
+		cpr::AsyncResponse fr = cpr::GetAsync( cpr::Url{res + "get_files/file"},
+		cpr::Parameters{{"Hydrus-Client-API-Access-Key", key}, {"hash", id}});
+		return std::async(std::launch::async, &Hydrus::fileRequest, this, std::move(fr));
+	}
+
 	std::future<json> retrieveMetadata (const FileId id)
 	{
 		json formatted = id;
