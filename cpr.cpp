@@ -44,14 +44,28 @@ auto getThumbnail (Hydrus& api, FileId id)
 	return loader->get_pixbuf();
 }
 
+auto getFile (Hydrus& api, FileId id)
+{
+	std::cout << "getting file" << std::endl;
+
+	std::string raw = api.retrieveFile(id).get();
+
+	auto loader = Gdk::PixbufLoader::create();
+	loader->write(reinterpret_cast<const guint8*>(raw.data()), raw.size());
+	loader->close();
+
+	return loader->get_pixbuf();
+}
+
+
 
 int main (int argc, char** argv)
 {
 
-	auto app = Gtk::Application::create("megacute...");
+	auto app = Gtk::Application::create();
 
 	auto builder = Gtk::Builder::create_from_file("../megacute.xml.ui");
-	auto imageWidget = builder->get_widget<Gtk::Image>("image");
+	auto imageWidget = builder->get_widget<Gtk::Image>("picture");
 	auto window 	 = builder->get_widget<Gtk::Window>("window");
 	auto grid 	 = builder->get_widget<Gtk::GridView>("icons");
 
@@ -83,10 +97,18 @@ int main (int argc, char** argv)
 
 	grid->set_model( select);
 	grid->set_factory( factory);
+	grid->signal_activate().connect(
+			[&](auto l)
+			{
+				auto col = std::dynamic_pointer_cast<SearchIcon>(model->get_object(l));
+				std::cout << "activate called" << col->fileId << std::endl;
+				imageWidget->set( getFile(api, col->fileId));
 
-	for(int i = 0; i < 1; i ++)
-	model->append( Glib::make_refptr_for_instance<SearchIcon>(
-			new SearchIcon("ac4293228e6b64b92b2f31d32084597e9b1414f5594069fa1bf0a9fd811dd927")));
+			});
+
+	for(const auto& s : api.search({"blonde", "thighhighs", "bangs", "feet"}).get())
+		model->append( Glib::make_refptr_for_instance<SearchIcon>(
+				new SearchIcon(s)));
 
 		
 	
