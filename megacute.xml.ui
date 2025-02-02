@@ -7,7 +7,7 @@
     <property name="default-width">640</property>
     <property name="default-height">480</property>
     <child>
-      <object class="GtkPaned">
+      <object class="GtkPaned" id="paned">
         <property name="start-child">
           <object class="GtkFrame">
             <property name="width-request">100</property>
@@ -53,7 +53,7 @@
           </object>
         </property>
         <property name="end-child">
-          <object class="GtkFrame">
+          <object class="GtkFrame" id="frame">
             <child>
               <object class="GtkListView" id="list">
                 <property name="height-request">25</property>
@@ -65,7 +65,23 @@
             <property name="hexpand">true</property>
             <property name="width-request">400</property>
             <child>
-              <object class="GtkImage" id="picture"></object>
+							<object class="GtkBox" id="box">
+								<property name="orientation">horizontal</property>
+	             <property name="vexpand">true</property>
+                <property name="hexpand">true</property>
+								<child>
+									<object class="GtkImage" id="picture">
+	             <property name="vexpand">true</property>
+                <property name="hexpand">true</property>
+									</object>
+							</child>
+								<child>
+									<object class="GtkImage" id="picture2">
+		             <property name="vexpand">true</property>
+ 	               <property name="hexpand">true</property>
+									</object>
+							</child>
+						</object>
             </child>
           </object>
         </property>
