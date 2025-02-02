@@ -203,7 +203,7 @@ class SkillMan
 
 	~SkillMan (void)
 	{
-		for(const auto t : names) database.insert(t);	
+		database.insert(names);
 	}
 
 	Tag retrieve (const std::string& s)
