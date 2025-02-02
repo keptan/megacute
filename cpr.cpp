@@ -10,40 +10,11 @@
 
 #include "transactional.h"
 #include "api.h"
+#include "commander.h"
 
 using json = nlohmann::json;
 
-class SearchIcon : public Glib::Object
-{
-	public:
-
-	const FileId fileId;
-	SearchIcon (const FileId& id) 
-		: fileId(id)
-	{
-		/*
-		auto loader = Gdk::PixbufLoader::create();
-		loader->write(reinterpret_cast<const guint8*>(data.data()), data.size());
-		loader->close();
-
-		m_pixbuf = loader->get_pixbuf();
-		*/
-	};
-};
-
-auto getThumbnail (Hydrus& api, FileId id)
-{
-	std::cout << "getting thumbnail" << std::endl;
-
-	std::string raw = api.retrieveThumbnail(id).get();
-
-	auto loader = Gdk::PixbufLoader::create();
-	loader->write(reinterpret_cast<const guint8*>(raw.data()), raw.size());
-	loader->close();
-
-	return loader->get_pixbuf();
-}
-
+/*
 auto getFile (Hydrus& api, FileId id)
 {
 	std::cout << "getting file" << std::endl;
@@ -56,6 +27,7 @@ auto getFile (Hydrus& api, FileId id)
 
 	return loader->get_pixbuf();
 }
+*/
 
 
 
@@ -66,18 +38,19 @@ int main (int argc, char** argv)
 
 	auto builder = Gtk::Builder::create_from_file("../megacute.xml.ui");
 	auto imageWidget = builder->get_widget<Gtk::Image>("picture");
+	auto imageWidget2 = builder->get_widget<Gtk::Image>("picture2");
 	auto window 	 = builder->get_widget<Gtk::Window>("window");
 	auto grid 	 = builder->get_widget<Gtk::GridView>("icons");
+	auto box 			= builder->get_widget<Gtk::Box>("box");
 
 	auto model   = Gio::ListStore<SearchIcon>::create();
 	auto select  = Gtk::SingleSelection::create(model);
 	auto factory = Gtk::SignalListItemFactory::create();
 
-	Hydrus api("http://localhost:45869/", getenv("HYDRUS_KEY"));
+	Commander commander( "test", getenv("HYDRUS_KEY"));
 	
 	factory->signal_setup().connect(
 		[&](auto l){ 
-			std::cout << "setup called" << std::endl;
 			auto picture = Gtk::make_managed<Gtk::Picture>();
 			picture->set_size_request(50,150);
 			l->set_child(*picture);
@@ -86,13 +59,12 @@ int main (int argc, char** argv)
 	factory->signal_bind().connect(
 		[&](auto l){
 
-			std::cout << "bind called" << std::endl;
 			auto col = std::dynamic_pointer_cast<SearchIcon>(l->get_item());
 			if (!col) return;
 			auto picture = dynamic_cast<Gtk::Picture*>(l->get_child());
 			if (!picture) return;
 
-			picture->set_pixbuf( getThumbnail(api, col->fileId));
+			picture->set_pixbuf( col->icon);
 		});
 
 	grid->set_model( select);
@@ -101,16 +73,64 @@ int main (int argc, char** argv)
 			[&](auto l)
 			{
 				auto col = std::dynamic_pointer_cast<SearchIcon>(model->get_object(l));
-				std::cout << "activate called" << col->fileId << std::endl;
-				imageWidget->set( getFile(api, col->fileId));
+				imageWidget->set( col->icon);
+				imageWidget2->set( col->icon);
+				commander.imageSelected( col->fileId);
 
 			});
 
-	for(const auto& s : api.search({"blonde", "thighhighs", "bangs", "feet"}).get())
+	/*
+	for(const auto& s : api.search("feet").get())
 		model->append( Glib::make_refptr_for_instance<SearchIcon>(
 				new SearchIcon(s)));
+				*/
 
-		
+		auto key_controller = Gtk::EventControllerKey::create();
+    key_controller->signal_key_pressed().connect(
+        [&](const guint keyval, const guint keycode, Gdk::ModifierType state) -> bool 
+				{
+            if (keyval == GDK_KEY_Left) {
+								commander.compRun(0);
+                return true;
+            } else if (keyval == GDK_KEY_Right) {
+								commander.compRun(1);
+                return true;
+            } else if (keyval == GDK_KEY_Up) {
+							commander.compRun(2);
+							return true;
+						}
+
+            return false; // Allow event propagation
+        }, false
+    );
+
+		auto motion_controller = Gtk::EventControllerMotion::create();
+		motion_controller->signal_enter().connect([&](const auto a, const auto b)
+				{
+					box->grab_focus();
+				});
+
+
+		box->add_controller(key_controller);
+		box->add_controller(motion_controller);
+		box->set_can_focus(true);
+		box->set_focusable(true);
+		box->set_focus_on_click(true);
+
+	commander.thumbnail_dispatch.connect( [&](){
+			for(int c = 0; c < commander.queue.size(); c++)
+			{
+				auto i = commander.queue.pop();	
+				model->append(i);
+			};});
+
+	commander.image_dispatch.connect( [&]()
+			{
+				if(commander.left) imageWidget->set( (*commander.left).icon);
+				if(commander.right) imageWidget2->set( (*commander.right).icon);
+			});
+
+	commander.search({"-cool", "system:archive", "system:filetype is image", "3d", "feet"});
 	
 	const auto activate = [&](void)
 	{
