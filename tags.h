@@ -5,22 +5,28 @@
 #include <unordered_set>
 #include <set>
 #include <memory>
+#include <random>
+#include <cstdlib>
 #include "transactional.h"
 #include "trueskill.h"
+#include "api.h"
+#include "trueskill.h"
+
 
 struct Tag
 {
 	std::string name;
-	double sigma = 100;
-	double mu = 100;
+	double mu = 100.0;
+	double sigma = 30.0;
 
 	double adjusted (void) const
 	{
-		return sigma - (mu * 3);
+		return mu - (sigma * 3);
 	}
 
 	bool operator < (const Tag& o) const
 	{
+		if(adjusted() == o.adjusted()) return name < o.name;
 		return	adjusted() < o.adjusted();
 	}
 };
@@ -60,7 +66,7 @@ class Tags
 		auto si = db.INSERT("OR IGNORE INTO tagScore (tag, mu, sigma) VALUES (?, ?, ?)");
 
 		ti.push(t.name);
-		si.push(t.name, t.sigma, t.mu);
+		si.push(t.name, t.mu, t.sigma);
 	}
 
 	Tag retrieve (const std::string& s)
@@ -86,9 +92,9 @@ class SkillMan
 
 	struct HashPT
 	{
-		std::size_t operator () (const std::shared_ptr< Tag>& t) const
+		std::size_t operator () (const Tag& t) const
 		{
-			return std::hash< std::string>()(t->name);
+			return std::hash< std::string>()(t.name);
 		}
 
 		std::size_t operator () (const std::string& s) const
@@ -101,26 +107,94 @@ class SkillMan
 
 	struct EqualPT
 	{
-		bool operator () (const std::shared_ptr< Tag>& a, const std::shared_ptr< Tag>& b) const
+		bool operator () (const Tag& a, const Tag& b) const
 		{
-			return a->name == b->name;
+			return a.name == b.name;
 		}
 
-		bool operator () (const std::shared_ptr< Tag>& a, const std::string& b) const
+		bool operator () (const Tag& a, const std::string& b) const
 		{
-			return a->name == b;
+			return a.name == b;
 		}
 
-		bool operator () (const std::string& a, const std::shared_ptr< Tag>& b) const
+		bool operator () (const std::string& a, const Tag& b) const
 		{
-			return a == b->name;
+			return a == b.name;
 		}
 		using is_transparent = void;
 	};
 
-	std::set< std::shared_ptr<Tag>, decltype([](const auto& a, const auto& b){return *a < *b;})> scores; //for the tags inside the images and their ratings
-	std::unordered_set< std::shared_ptr<Tag>, HashPT, EqualPT> names;
+	std::set< Tag> scores;
+	std::unordered_set<Tag, HashPT, EqualPT> names;
 	Tags database;
+
+	std::vector< Tag> trueskill ( const std::vector< Tag>& winner, const std::vector< Tag>& loser, const std::vector< Tag>& shared, bool tie = false)
+	{
+		std::vector< Tag> out;
+		std::vector< std::vector <double>> players;
+		int idIt = 0;
+
+		for(const auto& t : winner)
+		{
+			if(t.name == "~")
+			{
+				players.push_back( {t.mu, t.sigma, 1, 1, -1});
+				continue;
+			}
+			players.push_back( {t.mu, t.sigma, 1, 1, double(idIt)});
+			out.push_back(t);
+			idIt++;
+		}
+
+		for(const auto& t : loser)
+		{
+			if(t.name == "~")
+			{
+				players.push_back( {t.mu, t.sigma, 2, 1, -1});
+				continue;
+			}
+			players.push_back( {t.mu, t.sigma, 2, 1, double(idIt)});
+			out.push_back(t);
+			idIt++;
+		}
+
+		for(const auto& t : shared)
+		{
+			if(t.name == "~")
+			{
+				players.push_back( {t.mu, t.sigma, 3, 1, -1});
+				continue;
+			}
+			players.push_back( {t.mu, t.sigma, 3, 1, double(idIt)});
+			out.push_back(t);
+			idIt++;
+		}
+
+
+		std::vector<int> teams = {0,1};
+		if(shared.size()) teams = {0,2,1};
+
+		if(tie)
+		{
+			teams = {0, 0};
+			if(shared.size()) teams = {0, 0, 0};
+		}
+
+		if(shared.size()) rate( players, teams ,3); 
+		else rate( players, teams, 2);
+
+		for(const auto& p : players)
+		{
+			if(int(p[4]) != -1)
+			{
+				out[int(p[4])].mu = p[0];
+				out[int(p[4])].sigma = p[1];
+			}
+		}
+
+		return out;
+
+	}
 
 	public:
 	SkillMan (const std::string p)
@@ -129,32 +203,114 @@ class SkillMan
 
 	~SkillMan (void)
 	{
-		for(const auto t : names) database.insert(*t);	
+		for(const auto t : names) database.insert(t);	
 	}
 
 	Tag retrieve (const std::string& s)
 	{
 		auto it = names.find(s);
-		if(it != names.end()) return **it;
+		if(it != names.end()) return *it;
+
 		Tag out = database.retrieve(s);
-		auto shared = std::make_shared<Tag>(out);
-		scores.insert(shared);
-		names.insert(shared);
-		return *shared;
+		scores.insert(out);
+		names.insert(out);
+		return out;
+	}
+
+	Tag looksmatch (const Tag& t)
+	{
+		auto it = scores.upper_bound(t);
+		if(it == scores.end()) return t;
+		if(std::distance(it, scores.end()) < 5) return t;
+		return *it;
+	}
+
+	Tag random (void)
+	{
+		assert( scores.size());
+		return *scores.begin();
+	}
+
+	void clear (void)
+	{
+		scores.clear();
+		names.clear();
 	}
 
 	void insert (const Tag& t)
 	{
-		auto it = names.find(t.name);
+		auto it = names.find(t);
 		if(it != names.end())
 		{
-			**it = t;
-			return;
+			scores.erase(*it);
+			names.erase(*it);
 		}
 
-		auto shared = std::make_shared<Tag>(t);
-		scores.insert(shared);
-		names.insert(shared);
+		scores.insert(t);
+		names.insert(t);
 		return;
 	}
+
+	std::vector< Tag> teamPad ( const std::vector< std::string>& team, int pad)
+	{
+		std::vector< Tag> acc;
+		Tag accT{"~", 0, 0};
+
+		for(auto s : team)
+		{
+			auto t = retrieve(s);
+			acc.push_back(t);
+			accT.sigma += t.sigma;
+			accT.mu += t.mu;
+		}
+
+		accT.sigma /= team.size();
+		accT.mu 	 /= team.size();
+
+		while(acc.size() < pad) acc.push_back(accT);
+		return acc;
+	}
+
+	void adjudicate ( const std::string& player1, const std::string& player2, bool tie = false
+			/*std::vector< std::string>& team1, std::vector< std::string>& team2,*/ )
+	{
+		/*
+		std::unordered_set< std::string> set1;
+		std::vector< std::string> team1a;
+		std::vector< std::string> team2a;
+		std::vector< std::string> team3a;
+
+		for(const auto& s : team1) set1.insert(s);
+		for(const auto& s : team2)
+		{
+			if( set1.count(s))
+			{
+				set1.erase(s);
+				team3a.push_back(s);
+			}
+			else team2a.push_back(s);
+		}
+		for(const auto& s : set1) team1a.push_back(s);
+
+		auto tags1 = teamPad(team1a, std::max( {team1a.size(), team2a.size(), team3a.size()}));
+		auto tags2 = teamPad(team2a, std::max( {team1a.size(), team2a.size(), team3a.size()}));
+		auto tags3 = teamPad(team3a, std::max( {team1a.size(), team2a.size(), team3a.size()}));
+		*/
+
+		auto p1 	 = retrieve(player1);
+		auto p2		 = retrieve(player2);
+
+		std::vector<Tag> idTeam  = {p1};
+		std::vector<Tag> idTeam2 = {p2};
+		std::vector<Tag> idTeam3;
+
+		auto results = trueskill( idTeam, idTeam2, idTeam3, tie);
+		for(const auto t : results)
+		{
+			std::print("{} {} {}\n", t.name, t.mu, t.sigma);
+			insert(t);
+		}
+	}
+
 };
+
