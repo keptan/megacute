@@ -28,12 +28,24 @@ auto getFile (Hydrus& api, FileId id)
 	return loader->get_pixbuf();
 }
 */
+class TagEntry : public Glib::Object
+{
+	public:
+	const std::string tag;
+
+
+	TagEntry (const std::string& t) 
+		: tag(t)
+	{};
+};
+
+
 
 
 
 int main (int argc, char** argv)
 {
-
+	Commander commander( "test", getenv("HYDRUS_KEY"));
 	auto app = Gtk::Application::create();
 
 	auto builder = Gtk::Builder::create_from_file("../megacute.xml.ui");
@@ -41,13 +53,17 @@ int main (int argc, char** argv)
 	auto imageWidget2 = builder->get_widget<Gtk::Image>("picture2");
 	auto window 	 = builder->get_widget<Gtk::Window>("window");
 	auto grid 	 = builder->get_widget<Gtk::GridView>("icons");
+	auto tagList = builder->get_widget<Gtk::ListView>("tagList");
 	auto box 			= builder->get_widget<Gtk::Box>("box");
 
 	auto model   = Gio::ListStore<SearchIcon>::create();
 	auto select  = Gtk::SingleSelection::create(model);
 	auto factory = Gtk::SignalListItemFactory::create();
 
-	Commander commander( "test", getenv("HYDRUS_KEY"));
+	auto tagModel 	= Gio::ListStore<TagEntry>::create();
+	auto tagSelect  = Gtk::SingleSelection::create(tagModel);
+	auto tagFactory = Gtk::SignalListItemFactory::create();
+
 	
 	factory->signal_setup().connect(
 		[&](auto l){ 
@@ -79,12 +95,31 @@ int main (int argc, char** argv)
 
 			});
 
-	/*
-	for(const auto& s : api.search("feet").get())
-		model->append( Glib::make_refptr_for_instance<SearchIcon>(
-				new SearchIcon(s)));
-				*/
 
+
+		tagFactory->signal_setup().connect(
+				[&](auto l)
+				{
+					auto label = Gtk::make_managed<Gtk::Label>("", Gtk::Align::START);
+					l->set_child(*label);
+				});
+
+			tagFactory->signal_bind().connect(
+					[&](auto l)
+					{
+						auto tag = std::dynamic_pointer_cast<TagEntry>(l->get_item());
+						if(!tag) return;
+						auto label = dynamic_cast<Gtk::Label*>(l->get_child());
+						if(!label) return;
+
+						label->set_text( tag->tag);
+					});
+
+				tagList->set_model( tagSelect);
+				tagList->set_factory( tagFactory);
+
+
+		/* left and right competition logic*/
 		auto key_controller = Gtk::EventControllerKey::create();
     key_controller->signal_key_pressed().connect(
         [&](const guint keyval, const guint keycode, Gdk::ModifierType state) -> bool 
@@ -117,6 +152,8 @@ int main (int argc, char** argv)
 		box->set_focusable(true);
 		box->set_focus_on_click(true);
 
+		/* selecting images and searching logic */
+
 	commander.thumbnail_dispatch.connect( [&](){
 			for(int c = 0; c < commander.queue.size(); c++)
 			{
@@ -130,7 +167,8 @@ int main (int argc, char** argv)
 				if(commander.right) imageWidget2->set( (*commander.right).icon);
 			});
 
-	commander.search({"-cool", "system:archive", "system:filetype is image", "3d", "feet"});
+	std::vector<std::string> defaultTags = {"-cool", "system:archive", "system:filetype is image"};
+	for(const auto& t : defaultTags) tagModel->append( Glib::make_refptr_for_instance<TagEntry>(new TagEntry(t)));
 	
 	const auto activate = [&](void)
 	{
