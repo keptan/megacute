@@ -29,6 +29,7 @@ struct Tag
 		if(adjusted() == o.adjusted()) return name < o.name;
 		return	adjusted() < o.adjusted();
 	}
+
 };
 
 class Tags
@@ -124,7 +125,11 @@ class SkillMan
 		using is_transparent = void;
 	};
 
-	std::set< Tag> scores;
+	std::set< Tag, decltype( [](const Tag& a, const Tag& b)
+			{
+				if( a.mu == b.mu) return a.name < b.name;
+				return a.mu < b.mu;
+			})> scores;
 	std::unordered_set<Tag, HashPT, EqualPT> names;
 	Tags database;
 
