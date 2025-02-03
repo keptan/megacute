@@ -18,8 +18,7 @@ struct Tag
 	std::string name;
 	double mu = 100.0;
 	double sigma = 30.0;
-	int startCount = 0;
-	int endCount = 0;
+	int seen = 0;
 
 	double adjusted (void) const
 	{
@@ -28,8 +27,8 @@ struct Tag
 
 	bool operator < (const Tag& o) const
 	{
-		if(adjusted() == o.adjusted()) return name < o.name;
-		return	adjusted() < o.adjusted();
+		if(mu == o.mu) return name < o.name;
+		return	mu < o.mu;
 	}
 
 };
@@ -90,6 +89,74 @@ class Tags
 	}
 };
 
+std::vector< Tag> trueskill ( const std::vector< Tag>& winner, const std::vector< Tag>& loser, const std::vector< Tag>& shared, bool tie = false)
+{
+	std::vector< Tag> out;
+	std::vector< std::vector <double>> players;
+	int idIt = 0;
+
+	for(const auto& t : winner)
+	{
+		if(t.name == "~")
+		{
+			players.push_back( {t.mu, t.sigma, 1, 1, -1});
+			continue;
+		}
+		players.push_back( {t.mu, t.sigma, 1, 1, double(idIt)});
+		out.push_back(t);
+		idIt++;
+	}
+
+	for(const auto& t : loser)
+	{
+		if(t.name == "~")
+		{
+			players.push_back( {t.mu, t.sigma, 2, 1, -1});
+			continue;
+		}
+		players.push_back( {t.mu, t.sigma, 2, 1, double(idIt)});
+		out.push_back(t);
+		idIt++;
+	}
+
+	for(const auto& t : shared)
+	{
+		if(t.name == "~")
+		{
+			players.push_back( {t.mu, t.sigma, 3, 1, -1});
+			continue;
+		}
+		players.push_back( {t.mu, t.sigma, 3, 1, double(idIt)});
+		out.push_back(t);
+		idIt++;
+	}
+
+
+	std::vector<int> teams = {0,1};
+	if(shared.size()) teams = {0,2,1};
+
+	if(tie)
+	{
+		teams = {0, 0};
+		if(shared.size()) teams = {0, 0, 0};
+	}
+
+	if(shared.size()) rate( players, teams ,3); 
+	else rate( players, teams, 2);
+
+	for(const auto& p : players)
+	{
+		if(int(p[4]) != -1)
+		{
+			out[int(p[4])].mu = p[0];
+			out[int(p[4])].sigma = p[1];
+		}
+	}
+
+	return out;
+
+}
+
 class SkillMan
 {
 
@@ -127,94 +194,96 @@ class SkillMan
 		using is_transparent = void;
 	};
 
-	std::set< Tag, decltype( [](const Tag& a, const Tag& b)
-			{
-				if( a.mu == b.mu) return a.name < b.name;
-				return a.mu < b.mu;
-			})> scores;
+	struct muSort
+	{
+		bool operator () (const Tag& a, const Tag& b) const
+		{
+			if( a.mu == b.mu) return a.name < b.name;
+			return a.mu < b.mu;
+		}
+	};
 
-	int startCount = 0;
-	int endCount 	 = 0;
+	struct sigmaSort
+	{
+		bool operator () (const Tag& a, const Tag& b) const
+		{
+			if( a.sigma == b.sigma) return a.name < b.name;
+			return a.sigma > b.sigma;
+		}
+	};
 
-	std::unordered_set<Tag, HashPT, EqualPT> names;
 	Tags database;
 
-	std::vector< Tag> trueskill ( const std::vector< Tag>& winner, const std::vector< Tag>& loser, const std::vector< Tag>& shared, bool tie = false)
-	{
-		std::vector< Tag> out;
-		std::vector< std::vector <double>> players;
-		int idIt = 0;
+	std::unordered_set<Tag, HashPT, EqualPT> names;
+	std::vector<Tag> sigmaOrder;
+	std::vector<Tag> muOrder;
+	int seen = 0;
+	std::random_device rd;
+	std::mt19937 gen;
 
-		for(const auto& t : winner)
-		{
-			if(t.name == "~")
-			{
-				players.push_back( {t.mu, t.sigma, 1, 1, -1});
-				continue;
-			}
-			players.push_back( {t.mu, t.sigma, 1, 1, double(idIt)});
-			out.push_back(t);
-			idIt++;
-		}
-
-		for(const auto& t : loser)
-		{
-			if(t.name == "~")
-			{
-				players.push_back( {t.mu, t.sigma, 2, 1, -1});
-				continue;
-			}
-			players.push_back( {t.mu, t.sigma, 2, 1, double(idIt)});
-			out.push_back(t);
-			idIt++;
-		}
-
-		for(const auto& t : shared)
-		{
-			if(t.name == "~")
-			{
-				players.push_back( {t.mu, t.sigma, 3, 1, -1});
-				continue;
-			}
-			players.push_back( {t.mu, t.sigma, 3, 1, double(idIt)});
-			out.push_back(t);
-			idIt++;
-		}
-
-
-		std::vector<int> teams = {0,1};
-		if(shared.size()) teams = {0,2,1};
-
-		if(tie)
-		{
-			teams = {0, 0};
-			if(shared.size()) teams = {0, 0, 0};
-		}
-
-		if(shared.size()) rate( players, teams ,3); 
-		else rate( players, teams, 2);
-
-		for(const auto& p : players)
-		{
-			if(int(p[4]) != -1)
-			{
-				out[int(p[4])].mu = p[0];
-				out[int(p[4])].sigma = p[1];
-			}
-		}
-
-		return out;
-
-	}
 
 	public:
 	SkillMan (const std::string p)
-		: database(p)
-	{}
+		: database(p), gen(rd())
+	{
+	}
 
 	~SkillMan (void)
 	{
 		database.insert(names);
+	}
+
+	void orderInsert (const Tag& t)
+	{
+		const auto it = names.find(t.name);
+		if(it != names.end())
+		{
+			sigmaOrder.erase( std::equal_range( sigmaOrder.begin(), sigmaOrder.end(), *it, sigmaSort()).first );
+			muOrder.erase( std::equal_range( muOrder.begin(), muOrder.end(), *it, muSort()).first );
+			names.erase(it);
+		}
+			names.insert(t);
+			sigmaOrder.insert( std::upper_bound( sigmaOrder.begin(), sigmaOrder.end(), t, sigmaSort()), t);
+			muOrder.insert( std::upper_bound( muOrder.begin(), muOrder.end(), t, muSort()), t);
+	}
+
+	Tag randomLowSigma (void)
+	{
+		assert( sigmaOrder.size());
+
+		std::uniform_int_distribution dis(0, int(sigmaOrder.size())/8);
+
+		auto out = sigmaOrder.begin() + dis(gen);
+		while(out != sigmaOrder.end() && out->seen > seen) out++;
+		if(out == sigmaOrder.end())
+		{
+			seen++;
+			return *sigmaOrder.begin();
+		}
+		return *out;
+	}
+
+	Tag looksmatch (const Tag& t)
+	{
+		assert( muOrder.size());
+		const auto it = std::equal_range( muOrder.begin(), muOrder.end(), t, muSort()).first;
+
+		int leftDistance = std::min( int(std::distance(muOrder.begin(), it)), int(muOrder.size())/8);
+		int rightDistance = std::min( int(std::distance(it, muOrder.end())), int(muOrder.size())/8);
+
+		std::uniform_int_distribution dis(0 - leftDistance, rightDistance );
+	 	int offset = dis(gen);
+		if(offset == 0) offset = 1;
+
+		auto out = it + offset;
+		while(out != muOrder.begin() && out->seen > seen && out->name == t.name) out--;
+		if(out == muOrder.begin())
+		{
+			seen++;
+			return *(it + offset);
+		}
+
+		return *out;
 	}
 
 	Tag retrieve (const std::string& s)
@@ -223,67 +292,20 @@ class SkillMan
 		if(it != names.end()) return *it;
 
 		Tag out = database.retrieve(s);
-		scores.insert(out);
-		names.insert(out);
+		orderInsert(out);
 		return out;
-	}
-
-	Tag looksmatch (const Tag& t)
-	{
-		auto it = scores.upper_bound(t);
-		if(it == scores.end()) return t;
-		while(it != scores.end() && it->endCount > endCount)
-		{
-			it++;
-		}
-		if(it == scores.end())
-		{
-			endCount++;
-			return looksmatch(t);
-		}
-		return *it;
 	}
 
 	Tag random (void)
 	{
-		assert( scores.size());
-		auto it = scores.begin();
-		while(it != scores.end() && it->startCount > startCount)
-		{
-			it++;	
-		}
-		if(it == scores.end())
-		{
-			startCount++;
-			return *scores.begin();
-		}
-		auto t = *it;
-		scores.erase( it);
-		names.erase( t);
-		t.startCount++;
-		scores.insert(t);
-		names.insert(t);
-		return t;
+		return randomLowSigma();	
 	}
 
 	void clear (void)
 	{
-		scores.clear();
+		muOrder.clear();
+		sigmaOrder.clear();
 		names.clear();
-	}
-
-	void insert (const Tag& t)
-	{
-		auto it = names.find(t);
-		if(it != names.end())
-		{
-			scores.erase(*it);
-			names.erase(*it);
-		}
-
-		scores.insert(t);
-		names.insert(t);
-		return;
 	}
 
 	std::vector< Tag> teamPad ( const std::vector< std::string>& team, int pad)
@@ -342,9 +364,8 @@ class SkillMan
 		auto results = trueskill( idTeam, idTeam2, idTeam3, tie);
 		for(auto t : results)
 		{
-			t.endCount++;
 			std::print("{} {} {}\n", t.name, t.mu, t.sigma);
-			insert(t);
+			orderInsert(t);
 		}
 	}
 
