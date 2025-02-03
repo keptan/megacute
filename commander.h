@@ -93,7 +93,7 @@ struct Commander
 	~Commander (void)
 	{
 		cancelSearch = true;
-		searchTask.wait();
+		if(searchTask.valid()) searchTask.wait();
 	}
 	
 	void search (const std::vector<std::string> query)
