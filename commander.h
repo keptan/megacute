@@ -84,6 +84,9 @@ struct Commander
 	Glib::RefPtr< SearchIcon> left;
 	Glib::RefPtr< SearchIcon> right;
 
+	int leftStreak = 0;
+	int rightStreak = 0;
+
 	Commander (const std::string database, const std::string key)
 		: tags(database), api("http://localhost:45869/", key), left(nullptr), right(nullptr)
 	{
@@ -97,7 +100,7 @@ struct Commander
 	}
 	
 	void search (const std::vector<std::string> query)
-{
+	{
 		cancelSearch = true;
 		if(searchTask.valid()) searchTask.wait();
 		cancelSearch = false;
@@ -178,16 +181,22 @@ struct Commander
 		if(winner == 0) 
 		{
 			tags.adjudicate( left->fileId, right->fileId);
+			leftStreak++;
+			rightStreak = 0;
 			imageSelected( left->fileId);
 		}
 		if(winner == 1) 
 		{
 			tags.adjudicate( right->fileId, left->fileId);
+			rightStreak++;
+			leftStreak = 0;
 			imageSelected( right->fileId);
 		}
 		if(winner == 2)
 		{
 			tags.adjudicate(right->fileId, left->fileId, true);
+			leftStreak = 0;
+			rightStreak = 0;
 			imageSelected( tags.random().name);
 		}
 	}
@@ -204,8 +213,10 @@ struct Commander
 			FileId fl = file;
 			FileId fr = tags.looksmatch( tags.retrieve(fl)).name;
 
-			if(fl == fr)
+			if(fl == fr || std::max(rightStreak, leftStreak) > 3)
 			{
+				leftStreak = 0;
+				rightStreak = 0;
 				std::print("duhhh doing the thing");
 				auto l = tags.random();
 				fl 	= l.name;
