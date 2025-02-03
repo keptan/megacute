@@ -18,6 +18,8 @@ struct Tag
 	std::string name;
 	double mu = 100.0;
 	double sigma = 30.0;
+	int startCount = 0;
+	int endCount = 0;
 
 	double adjusted (void) const
 	{
@@ -130,6 +132,10 @@ class SkillMan
 				if( a.mu == b.mu) return a.name < b.name;
 				return a.mu < b.mu;
 			})> scores;
+
+	int startCount = 0;
+	int endCount 	 = 0;
+
 	std::unordered_set<Tag, HashPT, EqualPT> names;
 	Tags database;
 
@@ -226,14 +232,38 @@ class SkillMan
 	{
 		auto it = scores.upper_bound(t);
 		if(it == scores.end()) return t;
-		if(std::distance(it, scores.end()) < 5) return t;
+		while(it != scores.end() && it->endCount > endCount)
+		{
+			it++;
+		}
+		if(it == scores.end())
+		{
+			endCount++;
+			return looksmatch(t);
+		}
 		return *it;
 	}
 
 	Tag random (void)
 	{
 		assert( scores.size());
-		return *scores.begin();
+		auto it = scores.begin();
+		while(it != scores.end() && it->startCount > startCount)
+		{
+			it++;	
+		}
+		if(it == scores.end())
+		{
+			startCount++;
+			return *scores.begin();
+		}
+		auto t = *it;
+		scores.erase( it);
+		names.erase( t);
+		t.startCount++;
+		scores.insert(t);
+		names.insert(t);
+		return t;
 	}
 
 	void clear (void)
@@ -310,8 +340,9 @@ class SkillMan
 		std::vector<Tag> idTeam3;
 
 		auto results = trueskill( idTeam, idTeam2, idTeam3, tie);
-		for(const auto t : results)
+		for(auto t : results)
 		{
+			t.endCount++;
 			std::print("{} {} {}\n", t.name, t.mu, t.sigma);
 			insert(t);
 		}
