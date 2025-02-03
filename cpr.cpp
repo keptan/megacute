@@ -55,6 +55,8 @@ int main (int argc, char** argv)
 	auto grid 	 = builder->get_widget<Gtk::GridView>("icons");
 	auto tagList = builder->get_widget<Gtk::ListView>("tagList");
 	auto box 			= builder->get_widget<Gtk::Box>("box");
+	auto tagEntry = builder->get_widget<Gtk::Entry>("search");
+	auto searchButton = builder->get_widget<Gtk::Button>("searchButton");
 
 	auto model   = Gio::ListStore<SearchIcon>::create();
 	auto select  = Gtk::SingleSelection::create(model);
@@ -63,6 +65,7 @@ int main (int argc, char** argv)
 	auto tagModel 	= Gio::ListStore<TagEntry>::create();
 	auto tagSelect  = Gtk::SingleSelection::create(tagModel);
 	auto tagFactory = Gtk::SignalListItemFactory::create();
+
 
 	
 	factory->signal_setup().connect(
@@ -117,6 +120,11 @@ int main (int argc, char** argv)
 
 				tagList->set_model( tagSelect);
 				tagList->set_factory( tagFactory);
+				tagList->signal_activate().connect(
+						[&](auto l)
+						{
+							tagModel->remove(l);
+						});
 
 
 		/* left and right competition logic*/
@@ -165,6 +173,28 @@ int main (int argc, char** argv)
 			{
 				if(commander.left) imageWidget->set( (*commander.left).icon);
 				if(commander.right) imageWidget2->set( (*commander.right).icon);
+			});
+
+	tagEntry->signal_activate().connect(
+			[&]()
+			{
+				const auto text = tagEntry->get_text();
+				if(!text.size()) return;
+				tagModel->append( Glib::make_refptr_for_instance<TagEntry>(new TagEntry(text)));
+				tagEntry->set_text("");
+			});
+
+	searchButton->signal_clicked().connect(
+			[&]()
+			{
+				std::vector<std::string> tags;
+				for(int i = 0; i < tagModel->get_n_items(); i++)
+				{
+					auto string =  tagModel->get_item(i);
+					if(string) tags.push_back( string->tag);
+				}
+				model->remove_all();
+				commander.search(tags);
 			});
 
 	std::vector<std::string> defaultTags = {"-cool", "system:archive", "system:filetype is image"};
