@@ -159,10 +159,21 @@ struct Commander
 		}
 	}
 
+	bool searchRunning (void)
+	{
+		if(!searchTask.valid()) return false;
+		if(searchTask.wait_for(0s) == std::future_status::ready)
+		{
+			searchTask.wait();
+			return false;
+		}
+		return true;
+	}
+
 	void compRun (const int winner)
 	{
 		clearImageQueue();
-		if(searchTask.valid()) searchTask.wait();
+		if(searchRunning()) return;
 		if(!left || !right) return;
 		if(winner == 0) 
 		{
@@ -184,7 +195,7 @@ struct Commander
 	void imageSelected (const FileId file)
 	{
 		clearImageQueue();
-		if(searchTask.valid()) searchTask.wait();
+		if(searchRunning()) return;
 		iconLoadQueue.push( std::async( std::launch::async, [&, file=file]()
 		{
 			int count = ++icount;
