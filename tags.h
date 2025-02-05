@@ -215,6 +215,7 @@ class SkillMan
 	Tags database;
 
 	std::unordered_set<Tag, HashPT, EqualPT> names;
+	std::unordered_set<Tag, HashPT, EqualPT> otherTags;
 	std::vector<Tag> sigmaOrder;
 	std::vector<Tag> muOrder;
 	int seen = 0;
@@ -231,6 +232,7 @@ class SkillMan
 	~SkillMan (void)
 	{
 		database.insert(names);
+		database.insert(otherTags);
 	}
 
 	void orderInsert (const Tag& t)
@@ -247,20 +249,23 @@ class SkillMan
 			muOrder.insert( std::upper_bound( muOrder.begin(), muOrder.end(), t, muSort()), t);
 	}
 
+	void tagInsert (const Tag& t)
+	{
+		const auto it = otherTags.find(t.name);
+		if(it != otherTags.end()) otherTags.erase(it);
+		otherTags.insert(t);
+	}
+
 	Tag randomLowSigma (void)
 	{
 		assert( sigmaOrder.size());
 
 		std::uniform_int_distribution dis(0, int(sigmaOrder.size())/8);
-
-		auto out = sigmaOrder.begin() + dis(gen);
-		while(out != sigmaOrder.end() && out->seen > seen) out++;
-		if(out == sigmaOrder.end())
-		{
-			seen++;
-			return *sigmaOrder.begin();
-		}
-		return *out;
+		auto random = sigmaOrder.begin() + dis(gen);
+		Tag out = *random;
+		out.seen++;
+		orderInsert(out);
+		return out;
 	}
 
 	Tag looksmatch (const Tag& t)
@@ -268,22 +273,20 @@ class SkillMan
 		assert( muOrder.size());
 		const auto it = std::equal_range( muOrder.begin(), muOrder.end(), t, muSort()).first;
 
-		int leftDistance = std::min( int(std::distance(muOrder.begin(), it)), int(muOrder.size())/8);
-		int rightDistance = std::min( int(std::distance(it, muOrder.end())), int(muOrder.size())/8);
-
-		std::uniform_int_distribution dis(0 - leftDistance, rightDistance );
-	 	int offset = dis(gen);
-		if(offset == 0) offset = 1;
-
-		auto out = it + offset;
-		while(out != muOrder.begin() && out->seen > seen && out->name == t.name) out--;
-		if(out == muOrder.begin())
+		auto left  = std::max( muOrder.begin(), it - 10);
+		auto right = std::min( muOrder.end(), it + 10);
+		
+		auto min = left;
+		for(auto i = left; i < right; i++)
 		{
-			seen++;
-			return *(it + offset);
+			if(i->seen < min->seen && it != i) min = i;
 		}
 
-		return *out;
+		Tag out = *min;
+		out.seen++;
+		orderInsert(out);
+
+		return out;
 	}
 
 	Tag retrieve (const std::string& s)
@@ -296,6 +299,16 @@ class SkillMan
 		return out;
 	}
 
+	Tag retrieveTag (const std::string& s)
+	{
+		auto it = otherTags.find(s);
+		if(it != otherTags.end()) return *it;
+
+		Tag out = database.retrieve(s);
+		tagInsert(out);
+		return out;
+	}
+
 	Tag random (void)
 	{
 		return randomLowSigma();	
@@ -303,6 +316,7 @@ class SkillMan
 
 	void clear (void)
 	{
+		database.insert(names);
 		muOrder.clear();
 		sigmaOrder.clear();
 		names.clear();
@@ -313,25 +327,56 @@ class SkillMan
 		std::vector< Tag> acc;
 		Tag accT{"~", 0, 0};
 
-		for(auto s : team)
+		if(team.size() == 0)
 		{
-			auto t = retrieve(s);
-			acc.push_back(t);
-			accT.sigma += t.sigma;
-			accT.mu += t.mu;
+			accT.sigma = 100;
+			accT.mu = 30;
 		}
+		else
+		{
+			for(auto s : team)
+			{
+				auto t = retrieveTag(s);
+				acc.push_back(t);
+				accT.sigma += t.sigma;
+				accT.mu += t.mu;
+			}
 
-		accT.sigma /= team.size();
-		accT.mu 	 /= team.size();
+			accT.sigma /= team.size();
+			accT.mu 	 /= team.size();
+		}
 
 		while(acc.size() < pad) acc.push_back(accT);
 		return acc;
 	}
 
-	void adjudicate ( const std::string& player1, const std::string& player2, bool tie = false
-			/*std::vector< std::string>& team1, std::vector< std::string>& team2,*/ )
+	void splitAdjudicate (std::vector< std::string>& team1, std::vector< std::string>& team2, bool tie = false)
 	{
-		/*
+		std::vector< std::string> team1Characters;
+		std::vector< std::string> team2Characters;
+		std::vector< std::string> team1Artists;
+		std::vector< std::string> team2Artists;
+
+		const auto stripper = [&](auto& team, auto& dest, auto& string)
+		{
+			auto t1c = std::remove_if(team.begin(), team.end(), [&](auto& s){ return s.find(string) != std::string::npos;});
+			dest.insert(dest.end(), t1c, team.end());
+			team.erase(t1c, team.end());
+		};
+
+		stripper(team1, team1Characters, "characters:");
+		stripper(team2, team2Characters, "characters:");
+
+		stripper(team2, team1Artists, "creator:");
+		stripper(team2, team2Artists, "creator:");
+
+		if(team1Characters.size() || team2Characters.size()) adjudicateTags( team1Characters, team2Characters);
+		if(team1Artists.size() || team2Artists.size()) adjudicateTags( team1Artists, team2Artists);
+		if(team1.size() || team2.size()) adjudicateTags( team1, team2);
+	}
+
+	void adjudicateTags (std::vector< std::string>& team1, std::vector< std::string>& team2, bool tie = false )
+	{
 		std::unordered_set< std::string> set1;
 		std::vector< std::string> team1a;
 		std::vector< std::string> team2a;
@@ -352,17 +397,25 @@ class SkillMan
 		auto tags1 = teamPad(team1a, std::max( {team1a.size(), team2a.size(), team3a.size()}));
 		auto tags2 = teamPad(team2a, std::max( {team1a.size(), team2a.size(), team3a.size()}));
 		auto tags3 = teamPad(team3a, std::max( {team1a.size(), team2a.size(), team3a.size()}));
-		*/
+		auto tResults = trueskill(tags1, tags2, tags3, tie);
 
-		auto p1 	 = retrieve(player1);
-		auto p2		 = retrieve(player2);
+		for(auto& t : tResults)
+		{
+			std::print("{} {} {}\n", t.name, t.mu, t.sigma);
+			tagInsert(t);
+		}
+	}
 
+	void adjudicateImages (const std::string& winner, const std::string& loser, bool tie = false)
+	{
+		auto p1 	 = retrieve(winner);
+		auto p2		 = retrieve(loser);
 		std::vector<Tag> idTeam  = {p1};
 		std::vector<Tag> idTeam2 = {p2};
 		std::vector<Tag> idTeam3;
 
 		auto results = trueskill( idTeam, idTeam2, idTeam3, tie);
-		for(auto t : results)
+		for(auto& t : results)
 		{
 			std::print("{} {} {}\n", t.name, t.mu, t.sigma);
 			orderInsert(t);
