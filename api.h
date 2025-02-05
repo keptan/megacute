@@ -64,7 +64,7 @@ class Hydrus
 	{
 		json formatted = id;
 		cpr::AsyncResponse fr = cpr::GetAsync( cpr::Url{res + "get_files/file_metadata"},
-			cpr::Parameters{{"Hydrus-Client-API-Access-Key", key}, {"hash", formatted.dump()}});
+			cpr::Parameters{{"Hydrus-Client-API-Access-Key", key}, {"hash", id}});
 		return std::async(std::launch::async, &Hydrus::doRequest, this, std::move(fr));
 	}
 
@@ -74,6 +74,7 @@ class Hydrus
 				{
 					auto json = retrieveMetadata(id).get();
 					auto tags = json.at("metadata").at(0).at("tags").at(tagService).at("display_tags").at("0").get<std::vector<std::string>>();
+					//std::vector<std::string> tags;
 					return tags;
 				});
 	}
