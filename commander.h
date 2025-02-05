@@ -90,7 +90,7 @@ struct Commander
 	Commander (const std::string database, const std::string key)
 		: tags(database), api("http://localhost:45869/", key), left(nullptr), right(nullptr)
 	{
-
+		api.setTagService("all known tags").get();
 	}
 
 	~Commander (void)
@@ -178,23 +178,28 @@ struct Commander
 		clearImageQueue();
 		if(searchRunning()) return;
 		if(!left || !right) return;
+		auto leftTags 	= api.retrieveTags(left->fileId).get();
+		auto rightTags  = api.retrieveTags(right->fileId).get();
 		if(winner == 0) 
 		{
-			tags.adjudicate( left->fileId, right->fileId);
+			tags.adjudicateImages( left->fileId, right->fileId);
+			tags.splitAdjudicate(leftTags, rightTags);
 			leftStreak++;
 			rightStreak = 0;
 			imageSelected( left->fileId);
 		}
 		if(winner == 1) 
 		{
-			tags.adjudicate( right->fileId, left->fileId);
+			tags.adjudicateImages( right->fileId, left->fileId);
+			tags.splitAdjudicate(rightTags, leftTags);
 			rightStreak++;
 			leftStreak = 0;
 			imageSelected( right->fileId);
 		}
 		if(winner == 2)
 		{
-			tags.adjudicate(right->fileId, left->fileId, true);
+			tags.adjudicateImages(right->fileId, left->fileId, true);
+			tags.splitAdjudicate(rightTags, leftTags, true);
 			leftStreak = 0;
 			rightStreak = 0;
 			imageSelected( tags.random().name);
