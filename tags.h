@@ -76,7 +76,7 @@ class Tags
 		Tag out;
 		out.name = s;
 		std::string query = "'" + s + "';";
-		const auto search = db.SELECT<std::string, double, double>("tag, mu, sigma FROM tagScore WHERE tag = " + query );
+		const auto search = db.SELECT<std::string, double, double>("tag, mu, sigma FROM tagScore WHERE tag = ?", s);
 
 		if(search.size())
 		{
@@ -214,7 +214,6 @@ class SkillMan
 
 	Tags database;
 
-	std::unordered_set<Tag, HashPT, EqualPT> names;
 	std::unordered_set<Tag, HashPT, EqualPT> otherTags;
 	std::vector<Tag> sigmaOrder;
 	std::vector<Tag> muOrder;
@@ -224,6 +223,8 @@ class SkillMan
 
 
 	public:
+	std::unordered_set<Tag, HashPT, EqualPT> names;
+
 	SkillMan (const std::string p)
 		: database(p), gen(rd())
 	{
@@ -263,7 +264,8 @@ class SkillMan
 		std::uniform_int_distribution dis(0, int(sigmaOrder.size())/8);
 		auto random = sigmaOrder.begin() + dis(gen);
 		Tag out = *random;
-		out.seen++;
+		out.seen = seen;
+		seen++;
 		orderInsert(out);
 		return out;
 	}
@@ -283,7 +285,8 @@ class SkillMan
 		}
 
 		Tag out = *min;
-		out.seen++;
+		out.seen = seen;
+		seen++;
 		orderInsert(out);
 
 		return out;
