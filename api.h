@@ -18,6 +18,7 @@ class Hydrus
 	const std::string key;
 
  	std::string tagService;
+	std::string ratingService;
 
 	//lru cache here for the thumbnails I suppose
 	//and images? we can prefetch the images maybe based on expected ELO's of winners
@@ -44,6 +45,21 @@ class Hydrus
 		: res(res), key(k)
 	{
 
+	}
+
+	std::future<std::string> postRating (const FileId id, int rating)
+	{
+		json data;
+		data["hash"] = id;
+		data["rating"] = rating;
+		data["rating_service_key"] = ratingService;
+
+		cpr::AsyncResponse fr = cpr::PostAsync( 
+		cpr::Url{res + "edit_ratings/set_rating"},
+		cpr::Header{{"Hydrus-Client-API-Access-Key", key}, {"Content-Type", "application/json"}},
+		cpr::Body {data.dump()});
+
+		return std::async(std::launch::async, &Hydrus::fileRequest, this, std::move(fr));
 	}
 
 	std::future<std::string> retrieveThumbnail (const FileId id)
@@ -89,6 +105,19 @@ class Hydrus
 
 					json response = json::parse(services.get().text);
 					tagService = response.at("service").at("service_key");
+					});
+	}
+
+	std::future<void> setRatingService (const std::string str)
+	{
+				return std::async( std::launch::async, [&, str=str]()
+				{
+					json formatted = str;
+					auto services = cpr::GetAsync( cpr::Url{res + "get_service"},
+						cpr::Parameters{{"Hydrus-Client-API-Access-Key", key}, {"service_name", str}});
+
+					json response = json::parse(services.get().text);
+					ratingService = response.at("service").at("service_key");
 					});
 	}
 
