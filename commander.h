@@ -91,12 +91,19 @@ struct Commander
 		: tags(database), api("http://localhost:45869/", key), left(nullptr), right(nullptr)
 	{
 		api.setTagService("all known tags").get();
+		api.setRatingService("skill").get();
 	}
 
 	~Commander (void)
 	{
 		cancelSearch = true;
 		if(searchTask.valid()) searchTask.wait();
+
+		for(const auto& t : tags.names) 
+		{
+			if(t.adjusted() != 10.0) api.postRating( t.name, int( t.adjusted()));
+		}
+
 	}
 	
 	void search (const std::vector<std::string> query)
@@ -194,7 +201,7 @@ struct Commander
 			tags.splitAdjudicate(rightTags, leftTags);
 			rightStreak++;
 			leftStreak = 0;
-			imageSelected( right->fileId);
+			imageSelected( tags.random().name);
 		}
 		if(winner == 2)
 		{
