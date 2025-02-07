@@ -41,11 +41,11 @@ class Tags
 		:db(path)
 	{
 		auto t = db.transaction();
-		db.CREATE("TABLE IF NOT EXISTS tags (tag STRING NOT_NULL PRIMARY KEY UNIQUE)");
+		db.CREATE("TABLE IF NOT EXISTS tags (tag STRING NOT NULL PRIMARY KEY UNIQUE)");
 
 		db.CREATE("TABLE IF NOT EXISTS tagScore"
-				"(tag STRING NOT_NULL PRIMARY_KEY UNIQUE REFERENCES tags,"
-				"mu REAL NOT_NULL, sigma REAL NOT_NULL)");
+				"(tag STRING NOT NULL PRIMARY KEY UNIQUE REFERENCES tags,"
+				"mu REAL NOT NULL, sigma REAL NOT NULL)");
 
 		t.commit();
 	}
@@ -56,13 +56,12 @@ class Tags
 	{
 		auto transaction  = db.transaction();
 		auto ti = db.INSERT("OR IGNORE INTO tags (tag) VALUES (?)");
-		auto si = db.INSERT("OR IGNORE INTO tagScore (tag, mu, sigma) VALUES (?, ?, ?)");
+		auto si = db.INSERT("OR REPLACE INTO tagScore (tag, mu, sigma) VALUES (?, ?, ?)");
 
 		for (const auto& t : tags) 
 		{
 			ti.push(t.name);
 			si.push(t.name, t.mu, t.sigma);
-			std::print("inserting: {}, {}, {}\n", t.name, t.mu, t.sigma);
 		}
 
 		transaction.commit();
@@ -87,7 +86,6 @@ class Tags
 		if(search.size())
 		{
 			const auto [tag, mu, sigma] = search[0];
-			std::print("tag found in db {}, {}, {}\n", s, mu, sigma);
 			out.mu = mu;
 			out.sigma = sigma;
 		}
@@ -283,7 +281,7 @@ class SkillMan
 		assert( muOrder.size());
 		const auto it = std::equal_range( muOrder.begin(), muOrder.end(), t, muSort()).first;
 
-		auto left  = std::max( muOrder.begin(), it - 10);
+		auto left  = std::max( muOrder.begin(), it - 3);
 		auto right = std::min( muOrder.end(), it + 10);
 		
 		//grab within 15 images the most recently not seen
