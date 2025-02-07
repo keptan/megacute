@@ -54,18 +54,24 @@ class Tags
 	requires std::same_as< std::ranges::range_value_t<R>, Tag>
 	void insert (const R& tags)
 	{
-		auto t  = db.transaction();
+		auto transaction  = db.transaction();
+		auto ti = db.INSERT("OR IGNORE INTO tags (tag) VALUES (?)");
+		auto si = db.INSERT("OR IGNORE INTO tagScore (tag, mu, sigma) VALUES (?, ?, ?)");
+
 		for (const auto& t : tags) 
 		{
-			insert(t);
+			ti.push(t.name);
+			si.push(t.name, t.mu, t.sigma);
+			std::print("inserting: {}, {}, {}\n", t.name, t.mu, t.sigma);
 		}
-		t.commit();
+
+		transaction.commit();
 	}
 
 	void insert (const Tag& t)
 	{
 		auto ti = db.INSERT("OR IGNORE INTO tags (tag) VALUES (?)");
-		auto si = db.INSERT("OR IGNORE INTO tagScore (tag, mu, sigma) VALUES (?, ?, ?)");
+		auto si = db.INSERT("OR REPLACE INTO tagScore (tag, mu, sigma) VALUES (?, ?, ?)");
 
 		ti.push(t.name);
 		si.push(t.name, t.mu, t.sigma);
@@ -81,6 +87,7 @@ class Tags
 		if(search.size())
 		{
 			const auto [tag, mu, sigma] = search[0];
+			std::print("tag found in db {}, {}, {}\n", s, mu, sigma);
 			out.mu = mu;
 			out.sigma = sigma;
 		}
@@ -232,8 +239,8 @@ class SkillMan
 
 	~SkillMan (void)
 	{
-		database.insert(names);
 		database.insert(otherTags);
+		database.insert(names);
 	}
 
 	void orderInsert (const Tag& t)
@@ -261,7 +268,8 @@ class SkillMan
 	{
 		assert( sigmaOrder.size());
 
-		std::uniform_int_distribution dis(0, int(sigmaOrder.size())/8);
+		//grab from the lowest 5% of sigmas...
+		std::uniform_int_distribution dis(0, int(sigmaOrder.size())/20);
 		auto random = sigmaOrder.begin() + dis(gen);
 		Tag out = *random;
 		out.seen = seen;
@@ -278,6 +286,7 @@ class SkillMan
 		auto left  = std::max( muOrder.begin(), it - 10);
 		auto right = std::min( muOrder.end(), it + 10);
 		
+		//grab within 15 images the most recently not seen
 		auto min = left;
 		for(auto i = left; i < right; i++)
 		{
