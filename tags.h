@@ -75,7 +75,7 @@ class Tags
 	{
 		Tag out;
 		out.name = s;
-		std::string query = "'" + s + "';";
+		std::string query = s;
 		const auto search = db.SELECT<std::string, double, double>("tag, mu, sigma FROM tagScore WHERE tag = ?", s);
 
 		if(search.size())
@@ -367,8 +367,8 @@ class SkillMan
 			team.erase(t1c, team.end());
 		};
 
-		stripper(team1, team1Characters, "characters:");
-		stripper(team2, team2Characters, "characters:");
+		stripper(team1, team1Characters, "character:");
+		stripper(team2, team2Characters, "character:");
 
 		stripper(team2, team1Artists, "creator:");
 		stripper(team2, team2Artists, "creator:");
