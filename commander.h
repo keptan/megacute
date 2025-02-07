@@ -185,8 +185,20 @@ struct Commander
 		clearImageQueue();
 		if(searchRunning()) return;
 		if(!left || !right) return;
-		auto leftTags 	= api.retrieveTags(left->fileId).get();
-		auto rightTags  = api.retrieveTags(right->fileId).get();
+		std::vector<std::string> leftTags; 
+		std::vector<std::string> rightTags;   
+
+		try
+		{
+			leftTags  = api.retrieveTags(left->fileId).get();
+			rightTags = api.retrieveTags(right->fileId).get();
+		}catch( const std::exception& e)
+		{
+			leftTags = {};
+			rightTags = {};
+			std::print("failed to retrieve tags: {}\n", e.what());
+		}
+
 		if(winner == 0) 
 		{
 			tags.adjudicateImages( left->fileId, right->fileId);
