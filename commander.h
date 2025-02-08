@@ -204,7 +204,6 @@ struct Commander
 			tags.adjudicateImages( left->fileId, right->fileId);
 			tags.splitAdjudicate(leftTags, rightTags);
 			leftStreak++;
-			rightStreak = 0;
 			imageSelected( left->fileId);
 		}
 		if(winner == 1) 
@@ -212,8 +211,7 @@ struct Commander
 			tags.adjudicateImages( right->fileId, left->fileId);
 			tags.splitAdjudicate(rightTags, leftTags);
 			rightStreak++;
-			leftStreak = 0;
-			imageSelected( tags.random().name);
+			imageSelected(left->fileId);
 		}
 		if(winner == 2)
 		{
@@ -233,25 +231,21 @@ struct Commander
 		{
 			int count = ++icount;
 
-			std::print("looksmaxing...\n");
 			FileId fl = file;
 			FileId fr = tags.looksmatch( tags.retrieve(fl)).name;
 
-			if(fl == fr || std::max(rightStreak, leftStreak) > 3)
+			if(fl == fr || leftStreak > 3 || rightStreak > 1)
 			{
 				leftStreak = 0;
 				rightStreak = 0;
-				std::print("duhhh doing the thing");
 				auto l = tags.random();
 				fl 	= l.name;
 				fr = tags.looksmatch(l).name;
 			}
 
-			std::print("retrieving...\n");
 			std::string raw = api.retrieveFile(fl).get();
 			std::string raw2 = api.retrieveFile(fr).get();
 
-			std::print("retrieved..\n");
 
 			auto loader = Gdk::PixbufLoader::create();
 			loader->write(reinterpret_cast<const guint8*>(raw.data()), raw.size());
