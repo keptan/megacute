@@ -279,7 +279,7 @@ class SkillMan
 	Tag looksmatch (const Tag& t)
 	{
 		assert( muOrder.size());
-		const auto it = std::equal_range( muOrder.begin(), muOrder.end(), t, muSort()).first;
+		const auto it = std::upper_bound( muOrder.begin(), muOrder.end(), t, muSort());
 
 		auto left  = std::max( muOrder.begin(), it - 3);
 		auto right = std::min( muOrder.end(), it + 10);
@@ -377,7 +377,7 @@ class SkillMan
 		stripper(team1, team1Characters, "character:");
 		stripper(team2, team2Characters, "character:");
 
-		stripper(team2, team1Artists, "creator:");
+		stripper(team1, team1Artists, "creator:");
 		stripper(team2, team2Artists, "creator:");
 
 		if(team1Characters.size() || team2Characters.size()) adjudicateTags( team1Characters, team2Characters);
