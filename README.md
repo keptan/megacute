@@ -1,5 +1,5 @@
 # megacutegrab
-![](https://files.catbox.moe/jxlmsx.png)
+![](https://files.catbox.moe/7jcvg3.png)
 Connect to your Hydrus database and objectively rank your images using advanced bayesian ranking!
 Shows you two images at a time, and you pick which one is better.
 It calculates the scores and inserts them into a Hydrus inn/decc scoring service so you can sort your images in hydrus
