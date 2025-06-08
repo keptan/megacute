@@ -21,9 +21,9 @@ add_subdirectory(cskill)
 
 
 add_executable(megaCute cpr.cpp)
-target_compile_features(cprTest PUBLIC cxx_std_23)
-target_link_libraries(cprTest PUBLIC cpr::cpr  PkgConfig::GTKMM nlohmann_json::nlohmann_json SQLite::SQLite3 cskill) 
-target_include_directories(cprTest PUBLIC cureMaid/lib/transactional)
+target_compile_features(megaCute PUBLIC cxx_std_23)
+target_link_libraries(megaCute PUBLIC cpr::cpr  PkgConfig::GTKMM nlohmann_json::nlohmann_json SQLite::SQLite3 cskill) 
+target_include_directories(megaCute PUBLIC cureMaid/lib/transactional)
 
 set(CMAKE_BUILD_TYPE Debug)
 
