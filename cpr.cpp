@@ -11,6 +11,7 @@
 #include "transactional.h"
 #include "api.h"
 #include "commander.h"
+#include "setup.h"
 
 using json = nlohmann::json;
 
@@ -45,7 +46,11 @@ class TagEntry : public Glib::Object
 
 int main (int argc, char** argv)
 {
-	Commander commander( "test", getenv("HYDRUS_KEY"));
+	std::string res;
+	std::string key;
+	setup(argc, argv, res, key);
+	
+	Commander commander( "test", res, key);
 	auto app = Gtk::Application::create();
 
 	auto builder = Gtk::Builder::create_from_file("../megacute.xml.ui");
