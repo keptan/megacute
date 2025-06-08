@@ -52,7 +52,7 @@ int setup (int argc, char** argv, std::string& resOut, std::string& keyOut)
 	}
 
 	auto app = Gtk::Application::create();
-	auto builder    	 = Gtk::Builder::create_from_file("../setup.xml");
+	auto builder    	 = Gtk::Builder::create_from_file("setup.xml");
 	auto window  			 = builder->get_widget<Gtk::Window>("sWindow");
 	auto infoBox 			 = builder->get_widget<Gtk::TextView>("infoBox");
 	auto requestButton = builder->get_widget<Gtk::Button>("check");

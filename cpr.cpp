@@ -53,7 +53,7 @@ int main (int argc, char** argv)
 	Commander commander( "test", res, key);
 	auto app = Gtk::Application::create();
 
-	auto builder = Gtk::Builder::create_from_file("../megacute.xml.ui");
+	auto builder = Gtk::Builder::create_from_file("megacute.xml.ui");
 	auto imageWidget = builder->get_widget<Gtk::Image>("picture");
 	auto imageWidget2 = builder->get_widget<Gtk::Image>("picture2");
 	auto window 	 = builder->get_widget<Gtk::Window>("window");
