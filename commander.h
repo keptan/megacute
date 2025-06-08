@@ -87,8 +87,8 @@ struct Commander
 	int leftStreak = 0;
 	int rightStreak = 0;
 
-	Commander (const std::string database, const std::string key)
-		: tags(database), api("http://localhost:45869/", key), left(nullptr), right(nullptr)
+	Commander (const std::string database, const std::string res, const std::string key)
+		: tags(database), api(res, key), left(nullptr), right(nullptr)
 	{
 		api.setTagService("all known tags").get();
 		api.setRatingService("skill").get();
