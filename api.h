@@ -12,6 +12,15 @@
 using namespace nlohmann;
 using FileId = std::string;
 
+bool hydrusTest (const std::string& res, const std::string& key)
+{
+	cpr::Response r = cpr::Get( cpr::Url{res + "verify_access_key"},
+			cpr::Parameters{{"Hydrus-Client-API-Access-Key", key}});
+	if (r.status_code != 200) return false;
+	return true;
+	json response = json::parse(r.text);
+}
+
 class Hydrus
 {
 	const std::string res;
@@ -26,7 +35,7 @@ class Hydrus
 	//maybe some kind of manager would be more appropriate for that instead of the endpoint itself though
 	//lets make a slim endpoint class that is only responsible for getting the images
 	//and then we can make the cache and shit the actual interaction layer
-	//
+	
 	json doRequest (cpr::AsyncResponse request)
 	{
 		auto result  = request.get();
