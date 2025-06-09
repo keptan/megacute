@@ -29,7 +29,8 @@
                     <property name="valign">1</property>
                     <child>
                       <object class="GtkListView" id="tagList">
-                        <property name="height-request">50</property>
+                        <property name="height-request">100</property>
+                        <property name="tooltip-text" translatable="yes">double click to remove tag</property>
                       </object>
                     </child>
                   </object>
@@ -44,10 +45,13 @@
                         <property name="valign">1</property>
                         <property name="name">searchbox</property>
                         <property name="placeholder-text">1girl</property>
+                        <property name="tooltip-text" translatable="yes">enter tags and press enter :)</property>
                       </object>
                     </child>
                     <child>
-                      <object class="GtkButton" id="searchButton"></object>
+                      <object class="GtkButton" id="searchButton">
+                        <property name="label">search</property>
+                      </object>
                     </child>
                   </object>
                 </child>
@@ -60,6 +64,7 @@
                     <property name="valign">1</property>
                     <child>
                       <object class="GtkGridView" id="icons">
+                        <property name="tooltip-text" translatable="yes">select image to load it into the competition</property>
                         <property name="vexpand">true</property>
                         <property name="orientation">1</property>
                         <property name="max-columns">2</property>
@@ -72,21 +77,6 @@
                   <object class="GtkBox" id="viewButtons">
                     <property name="orientation">0</property>
                     <property name="hexpand">true</property>
-                    <child>
-                      <object class="GtkButton" id="randomButton">
-                        <property name="icon-name">dice-symbolic</property>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkButton" id="sortButton">
-                        <property name="icon-name">list-low-priority-symbolic</property>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkButton" id="saveButton">
-                        <property name="icon-name">floppy-symbolic</property>
-                      </object>
-                    </child>
                   </object>
                 </child>
               </object>
@@ -107,6 +97,8 @@
             <property name="width-request">400</property>
             <child>
               <object class="GtkBox" id="box">
+                <property name="tooltip-text" translatable="yes">Left and right arrows to select winner
+Up arrow for tie</property>
                 <property name="orientation">0</property>
                 <property name="vexpand">true</property>
                 <property name="hexpand">true</property>
