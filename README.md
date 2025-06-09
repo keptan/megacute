@@ -12,6 +12,7 @@ Using [Microsoft Trueskill](http://www.moserware.com/2010/03/computing-your-skil
 
 # Installation
 Developed on nix so the build process for me looks like this:
+note: nix is just used to gather dependencies and build enviroment, you don't need it
 ```
 git clone --recursive https://github.com/keptan/megacute
 nix develop
