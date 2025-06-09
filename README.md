@@ -20,4 +20,13 @@ make
 ./megacute
 ```
 
+## Notes on Usage
+Syncs your scores to hydrus on close.
 
+It does keep track of tag scores but there's no way to browse them yet.
+
+The scores will take a while to become accurate, but it's snowballing process. After your have a good chunk of accurately rated images the matchmaking will become scarilly accurate.
+
+Use the left and right arrows to pick the superior image, use the up arrow if they're tied.
+
+Doesn't support videos or gifs yet.
