@@ -31,3 +31,7 @@ The scores will take a while to become accurate, but it's snowballing process. A
 Use the left and right arrows to pick the superior image, use the up arrow if they're tied.
 
 Doesn't support videos or gifs yet.
+
+## Doesn't this require millions of comparisons?
+
+No this is similar to an adaptive sort. Comparisons are made in less than a second and the number of required comparisons approaches n logn
