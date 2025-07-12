@@ -85,10 +85,12 @@ int main (int argc, char** argv)
 
 			auto col = std::dynamic_pointer_cast<SearchIcon>(l->get_item());
 			if (!col) return;
+
 			auto picture = dynamic_cast<Gtk::Picture*>(l->get_child());
 			if (!picture) return;
 
-			picture->set_pixbuf( col->icon);
+			commander.thumbnailFetch( col, picture);
+			//picture->set_pixbuf( col->icon);
 		});
 
 	grid->set_model( select);
@@ -97,10 +99,12 @@ int main (int argc, char** argv)
 			[&](auto l)
 			{
 				auto col = std::dynamic_pointer_cast<SearchIcon>(model->get_object(l));
-				imageWidget->set( col->icon);
-				imageWidget2->set( col->icon);
+				if(col->icon)
+				{
+					imageWidget->set( col->icon);
+					imageWidget2->set( col->icon);
+				}
 				commander.imageSelected( col->fileId);
-
 			});
 
 

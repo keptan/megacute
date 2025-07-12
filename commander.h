@@ -105,6 +105,23 @@ struct Commander
 		}
 
 	}
+
+	void thumbnailFetch (Glib::RefPtr<SearchIcon> icon, Gtk::Picture* picture)
+	{
+		std::lock_guard guard(iconLoadQueueMutex);
+		if(iconLoadQueue.size() > 10) clearImageQueue();
+
+		iconLoadQueue.push( std::async( std::launch::async, [&, icon=icon, picture=picture]()
+		{
+			auto loader = Gdk::PixbufLoader::create();
+			std::string raw = api.retrieveThumbnail(icon->fileId).get();
+			loader->write(reinterpret_cast<const guint8*>(raw.data()), raw.size());
+			loader->close();
+
+			icon->icon = loader->get_pixbuf();
+			picture->set_pixbuf( icon->icon);
+		}));
+	}
 	
 	void search (const std::vector<std::string> query)
 	{
@@ -125,14 +142,8 @@ struct Commander
 					}
 
 					tags.retrieve(s);
-
-					auto loader = Gdk::PixbufLoader::create();
-					std::string raw = api.retrieveThumbnail(s).get();
-					loader->write(reinterpret_cast<const guint8*>(raw.data()), raw.size());
-					loader->close();
-					
 					queue.push( Glib::make_refptr_for_instance<SearchIcon>(
-								new SearchIcon(s, loader->get_pixbuf())));
+								new SearchIcon(s, nullptr)));
 
 					if(queue.size() > 10) thumbnail_dispatch.emit();
 				}
@@ -206,14 +217,14 @@ struct Commander
 			tags.adjudicateImages( left->fileId, right->fileId);
 			tags.splitAdjudicate(leftTags, rightTags);
 			leftStreak++;
-			imageSelected( left->fileId);
+			imageSelected( left->fileId, false);
 		}
 		if(winner == 1) 
 		{
 			tags.adjudicateImages( right->fileId, left->fileId);
 			tags.splitAdjudicate(rightTags, leftTags);
 			rightStreak++;
-			imageSelected(left->fileId);
+			imageSelected(left->fileId, false);
 		}
 		if(winner == 2)
 		{
@@ -225,11 +236,12 @@ struct Commander
 		}
 	}
 
-	void imageSelected (const FileId file, bool reset = false)
+	void imageSelected (const FileId file, const bool reset = false)
 	{
+		std::lock_guard guard(iconLoadQueueMutex);
 		clearImageQueue();
 		if(searchRunning()) return;
-		iconLoadQueue.push( std::async( std::launch::async, [&, file=file]()
+		iconLoadQueue.push( std::async( std::launch::async, [&, file=file, reset=reset]()
 		{
 			int count = ++icount;
 
@@ -238,7 +250,6 @@ struct Commander
 
 			if(fl == fr || leftStreak > 3 || rightStreak > 1 || reset)
 			{
-				std::print("reset image selection and rerolled\n");
 				leftStreak = 0;
 				rightStreak = 0;
 				auto l = tags.random();
