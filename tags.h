@@ -31,6 +31,11 @@ struct Tag
 		return	mu < o.mu;
 	}
 
+	bool operator == (const Tag& o) const
+	{
+		return name == o.name;
+	}
+
 };
 
 class Tags
@@ -246,8 +251,10 @@ class SkillMan
 		const auto it = names.find(t.name);
 		if(it != names.end())
 		{
-			sigmaOrder.erase( std::equal_range( sigmaOrder.begin(), sigmaOrder.end(), *it, sigmaSort()).first );
-			muOrder.erase( std::equal_range( muOrder.begin(), muOrder.end(), *it, muSort()).first );
+			auto sigmaIt = std::equal_range( sigmaOrder.begin(), sigmaOrder.end(), *it, sigmaSort()).first;
+			auto muIt = std::equal_range( muOrder.begin(), muOrder.end(), *it, muSort()).first;
+			sigmaOrder.erase(sigmaIt);
+			muOrder.erase(muIt);
 			names.erase(it);
 		}
 			names.insert(t);
@@ -267,13 +274,16 @@ class SkillMan
 		assert( sigmaOrder.size());
 
 		//grab from the lowest 5% of sigmas...
-		std::uniform_int_distribution dis(0, int(sigmaOrder.size())/20);
-		auto random = sigmaOrder.begin() + dis(gen);
-		Tag out = *random;
-		out.seen = seen;
-		seen++;
-		orderInsert(out);
-		return out;
+		auto left  = sigmaOrder.begin();
+		auto right = left + std::min( sigmaOrder.size() ,std::max( static_cast<std::size_t>(20), sigmaOrder.size() / 20)); 
+
+		//grab a not seen low sigma image
+		auto min = left;
+		for(auto i = left; i < right; i++)
+		{
+			if(i->seen < min->seen) min = i;
+		}
+		return *min;
 	}
 
 	Tag looksmatch (const Tag& t)
@@ -288,21 +298,19 @@ class SkillMan
 		auto min = left;
 		for(auto i = left; i < right; i++)
 		{
-			if(i->seen < min->seen && it != i) min = i;
+			if(i->seen < min->seen && t != *i) min = i;
 		}
 
-		Tag out = *min;
-		out.seen = seen;
-		seen++;
-		orderInsert(out);
-
-		return out;
+		return *min;
 	}
 
 	Tag retrieve (const std::string& s)
 	{
 		auto it = names.find(s);
-		if(it != names.end()) return *it;
+		if(it != names.end()) 
+		{
+			return *it;
+		}
 
 		Tag out = database.retrieve(s);
 		orderInsert(out);
@@ -409,15 +417,24 @@ class SkillMan
 		auto tags3 = teamPad(team3a, std::max( {team1a.size(), team2a.size(), team3a.size()}));
 		auto tResults = trueskill(tags1, tags2, tags3, tie);
 
+		int c = 0;
 		for(auto& t : tResults)
 		{
-			std::print("{} {} {}\n", t.name, t.mu, t.sigma);
+			t.seen = seen;
+
+			if (c++ == 5) 
+			{
+				std::print("...\n");
+			}
+			if(c < 5) std::print("tag: {} score: {:.2f} {}\n", t.name, t.mu - (3* t.sigma), t.seen);
+
 			tagInsert(t);
 		}
 	}
 
 	void adjudicateImages (const std::string& winner, const std::string& loser, bool tie = false)
 	{
+		seen++;
 		auto p1 	 = retrieve(winner);
 		auto p2		 = retrieve(loser);
 		std::vector<Tag> idTeam  = {p1};
@@ -427,7 +444,8 @@ class SkillMan
 		auto results = trueskill( idTeam, idTeam2, idTeam3, tie);
 		for(auto& t : results)
 		{
-			std::print("{} {} {}\n", t.name, t.mu, t.sigma);
+			t.seen = seen;
+			std::print("image: {} score: {:.2f} {}\n", t.name.substr(0,5), t.mu - (3* t.sigma), t.seen);
 			orderInsert(t);
 		}
 	}

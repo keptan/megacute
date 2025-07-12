@@ -147,14 +147,16 @@ struct Commander
 			auto& future = iconLoadQueue.front();
 			if( future.valid())
 			{
-				if( future.wait_for(0s) == std::future_status::ready)
+				if( future.wait_for(0.3s) == std::future_status::ready)
 				{
 					try
 					{
 					future.get();
 					}
 					catch (Glib::Error e)
-					{}
+					{
+						std::print("imagequeue error: {}\n", e.what());
+					}
 					iconLoadQueue.pop();
 				}
 				else
@@ -219,11 +221,11 @@ struct Commander
 			tags.splitAdjudicate(rightTags, leftTags, true);
 			leftStreak = 0;
 			rightStreak = 0;
-			imageSelected( tags.random().name);
+			imageSelected(left->fileId, true);
 		}
 	}
 
-	void imageSelected (const FileId file)
+	void imageSelected (const FileId file, bool reset = false)
 	{
 		clearImageQueue();
 		if(searchRunning()) return;
@@ -234,8 +236,9 @@ struct Commander
 			FileId fl = file;
 			FileId fr = tags.looksmatch( tags.retrieve(fl)).name;
 
-			if(fl == fr || leftStreak > 3 || rightStreak > 1)
+			if(fl == fr || leftStreak > 3 || rightStreak > 1 || reset)
 			{
+				std::print("reset image selection and rerolled\n");
 				leftStreak = 0;
 				rightStreak = 0;
 				auto l = tags.random();
@@ -246,27 +249,48 @@ struct Commander
 			std::string raw = api.retrieveFile(fl).get();
 			std::string raw2 = api.retrieveFile(fr).get();
 
-
+			try
+			{
 			auto loader = Gdk::PixbufLoader::create();
 			loader->write(reinterpret_cast<const guint8*>(raw.data()), raw.size());
 			loader->close();
+			auto pixbuf  =  loader->get_pixbuf();
+			left = Glib::make_refptr_for_instance<SearchIcon>(
+			new SearchIcon( fl, pixbuf));
+			}
+			catch ( Glib::Error e)
+			{
+				std::print("falling back to thumbnail!\n");
+				std::string raw = api.retrieveThumbnail(fl).get();
+				auto loader = Gdk::PixbufLoader::create();
+				loader->write(reinterpret_cast<const guint8*>(raw.data()), raw.size());
+				loader->close();
+				auto pixbuf  =  loader->get_pixbuf();
+				left = Glib::make_refptr_for_instance<SearchIcon>(
+				new SearchIcon( fl, pixbuf));
+			}
 
+			try
+			{
 			auto loader2 = Gdk::PixbufLoader::create();
 			loader2->write(reinterpret_cast<const guint8*>(raw2.data()), raw2.size());
 			loader2->close();
-
-			auto pixbuf  =  loader->get_pixbuf();
 			auto pixbuf2 =  loader2->get_pixbuf();
-			if(pixbuf)
-			{
-				left = Glib::make_refptr_for_instance<SearchIcon>(
-						new SearchIcon( fl, pixbuf));
+			right = Glib::make_refptr_for_instance<SearchIcon>(
+			new SearchIcon( fr, pixbuf2));
 			}
-			if(pixbuf2)
+			catch ( Glib::Error e)
 			{
+				std::print("falling back to thumbnail!\n");
+				std::string raw = api.retrieveThumbnail(fr).get();
+				auto loader = Gdk::PixbufLoader::create();
+				loader->write(reinterpret_cast<const guint8*>(raw.data()), raw.size());
+				loader->close();
+				auto pixbuf  =  loader->get_pixbuf();
 				right = Glib::make_refptr_for_instance<SearchIcon>(
-						new SearchIcon( fr, pixbuf2));
+				new SearchIcon( fr, pixbuf));
 			}
+
 			if(icount == count) image_dispatch.emit();
 		}));
 	}
